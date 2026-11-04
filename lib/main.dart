@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'domain/recommendation.dart';
 import 'settings_editor.dart';
 import 'preset_store.dart';
+import 'library.dart';
+import 'exit_guard.dart';
 import 'draw_store.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -42,6 +44,13 @@ class _RecommendationHomeState extends State<RecommendationHome> {
   @override
   void initState() {
     super.initState();
+    libraryStore.load().catchError((Object _) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('보관함을 불러오지 못했습니다.')));
+      }
+    });
     presetStore
         .load()
         .then((_) {
@@ -168,7 +177,18 @@ class _RecommendationHomeState extends State<RecommendationHome> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('추천')),
+    appBar: AppBar(
+      title: const Text('추천'),
+      actions: [
+        IconButton(
+          tooltip: '보관함',
+          icon: const Icon(Icons.inventory_2_outlined),
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const LibraryPage())),
+        ),
+      ],
+    ),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
@@ -301,6 +321,20 @@ class RecommendationResults extends StatefulWidget {
 }
 
 class _RecommendationResultsState extends State<RecommendationResults> {
+  bool get unsavedResults => games.any((g) => !libraryStore.contains(g));
+  bool get temporary => options != null && presetStore.find(presetId) == null;
+  Future<void> persist(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('보관함 저장에 실패했습니다. 다시 시도하십시오.')),
+        );
+      }
+    }
+  }
+
   late List<LottoGame> games = widget.initialGames;
   bool busy = false;
   late RecommendationOptions? options = widget.options;
@@ -322,24 +356,29 @@ class _RecommendationResultsState extends State<RecommendationResults> {
   }
 
   Future<void> regenerate([RecommendationOptions? edited]) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('새 번호를 생성하시겠습니까?'),
-        content: const Text('새 번호를 생성하면 현재 결과는 사라집니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('기존 결과로 돌아가기'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('새 번호 생성'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
+    final confirmed =
+        !unsavedResults ||
+        await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('새 번호를 생성하시겠습니까?'),
+                content: const Text(
+                  '새 번호를 생성하면 저장하지 않은 현재 결과는 사라집니다. 저장할 번호가 있다면 결과로 돌아가 저장한 후 다시 시도하십시오.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('기존 결과로 돌아가기'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('새 번호 생성'),
+                  ),
+                ],
+              ),
+            ) ==
+            true;
+    if (!confirmed || !mounted) return;
     setState(() => busy = true);
     try {
       final configuration = edited ?? options;
@@ -374,52 +413,90 @@ class _RecommendationResultsState extends State<RecommendationResults> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('추천 결과')),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text(
-            '${options == null ? '완전 랜덤' : presetStore.find(presetId)?.name ?? '임시 설정'} · ${games.length}게임',
-          ),
-          if (options != null) ...[
-            if (presetStore.find(presetId) == null)
-              const Text('저장되지 않은 설정입니다.'),
-            if (presetStore.find(presetId) != null &&
-                !sameOptions(options!, presetStore.find(presetId)!.options))
-              const Text('생성 후 설정이 변경되었습니다.'),
-            TextButton(
-              onPressed: busy ? null : edit,
-              child: const Text('설정 수정'),
-            ),
-          ],
-          for (var i = 0; i < games.length; i++)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('게임 ${i + 1}'),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: libraryStore,
+    builder: (context, _) => ExitGuard(
+      needsConfirmation: unsavedResults || temporary,
+      stay: '결과로 돌아가기',
+      message: unsavedResults
+          ? '이 화면을 나가면 저장하지 않은 결과${temporary ? '와 임시 설정은' : '는'} 사라집니다. 저장하고 싶은 번호가 있다면 결과로 돌아가 저장 후 이동해 주세요.'
+          : '현재 설정이 저장되지 않았습니다. 이 화면을 나가면 임시 설정은 사라집니다.',
+      child: Scaffold(
+        appBar: AppBar(title: const Text('추천 결과')),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text(
+                '${options == null ? '완전 랜덤' : presetStore.find(presetId)?.name ?? '임시 설정'} · ${games.length}게임',
+              ),
+              if (options != null) ...[
+                if (presetStore.find(presetId) == null)
+                  const Text('저장되지 않은 설정입니다.'),
+                if (presetStore.find(presetId) != null &&
+                    !sameOptions(options!, presetStore.find(presetId)!.options))
+                  const Text('생성 후 설정이 변경되었습니다.'),
+                TextButton(
+                  onPressed: busy ? null : edit,
+                  child: const Text('설정 수정'),
+                ),
+              ],
+              for (var i = 0; i < games.length; i++)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (final n in games[i].numbers)
-                          CircleAvatar(child: Text('$n')),
+                        Text('게임 ${i + 1}'),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            for (final n in games[i].numbers)
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    CircleAvatar(child: Text('$n')),
+                                    IconButton(
+                                      tooltip: '$n 내 번호 저장',
+                                      isSelected: libraryStore.numbers.contains(
+                                        n,
+                                      ),
+                                      selectedIcon: const Icon(Icons.favorite),
+                                      icon: const Icon(Icons.favorite_border),
+                                      onPressed: () => persist(
+                                        () => libraryStore.toggleNumber(n),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: libraryStore.contains(games[i])
+                              ? null
+                              : () => persist(
+                                  () =>
+                                      libraryStore.saveGame(games[i], options),
+                                ),
+                          child: Text(
+                            libraryStore.contains(games[i])
+                                ? '저장된 조합'
+                                : '조합 저장',
+                          ),
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
+              FilledButton(
+                onPressed: busy ? null : regenerate,
+                child: Text(busy ? '생성 중입니다' : '다시 생성'),
               ),
-            ),
-          FilledButton(
-            onPressed: busy ? null : regenerate,
-            child: Text(busy ? '생성 중입니다' : '다시 생성'),
+            ],
           ),
-        ],
+        ),
       ),
     ),
   );

@@ -5,13 +5,129 @@ import 'package:easy_lotto/domain/recommendation.dart';
 import 'package:easy_lotto/settings_editor.dart';
 import 'package:easy_lotto/preset_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:easy_lotto/library.dart';
 
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     presetStore.items = [];
     presetStore.selectedId = null;
+    libraryStore.numbers = {};
+    libraryStore.games = [];
   });
+  testWidgets('dirty editor back warns and cancel keeps draft', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (_) => const SettingsEditor()),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('1묶음'));
+    await tester.tap(find.text('1묶음'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('저장하지 않고 이동'), findsOneWidget);
+    await tester.tap(find.text('돌아가기'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsEditor), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('저장하지 않고 이동'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsEditor), findsNothing);
+  });
+  testWidgets('result saves hearts and combinations', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RecommendationResults(
+          initialGames: [
+            LottoGame([1, 2, 3, 4, 5, 6]),
+          ],
+        ),
+      ),
+    );
+    await tester.tap(find.byTooltip('3 내 번호 저장'));
+    await tester.pumpAndSettle();
+    expect(libraryStore.numbers, {3});
+    await tester.tap(find.text('조합 저장'));
+    await tester.pumpAndSettle();
+    expect(libraryStore.games.length, 1);
+    expect(find.text('저장된 조합'), findsOneWidget);
+  });
+  testWidgets('result warns on back until its game is saved', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => RecommendationResults(
+                  initialGames: [
+                    LottoGame([1, 2, 3, 4, 5, 6]),
+                  ],
+                ),
+              ),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('저장하지 않고 이동'), findsOneWidget);
+    await tester.tap(find.text('결과로 돌아가기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('조합 저장'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(RecommendationResults), findsNothing);
+    expect(libraryStore.games.length, 1);
+  });
+  testWidgets(
+    'generating a dirty draft returns options without abandonment dialog',
+    (tester) async {
+      RecommendationOptions? result;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                result = await Navigator.push<RecommendationOptions>(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsEditor()),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('1묶음'));
+      await tester.tap(find.text('1묶음'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('번호 생성'));
+      await tester.pumpAndSettle();
+      expect(result?.groupCount, 1);
+      expect(find.byType(AlertDialog), findsNothing);
+    },
+  );
   testWidgets('save stays in editor and restores preset on home', (
     tester,
   ) async {
