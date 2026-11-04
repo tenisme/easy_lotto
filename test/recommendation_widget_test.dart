@@ -3,8 +3,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:easy_lotto/main.dart';
 import 'package:easy_lotto/domain/recommendation.dart';
 import 'package:easy_lotto/settings_editor.dart';
+import 'package:easy_lotto/preset_store.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    presetStore.items = [];
+    presetStore.selectedId = null;
+  });
+  testWidgets('save stays in editor and restores preset on home', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MainApp());
+    await tester.tap(find.text('상세 설정'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('설정 만들기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('설정 저장'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '저장'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsEditor), findsOneWidget);
+    expect(presetStore.items.single.name, '설정1');
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('설정1'), findsOneWidget);
+    expect(find.text('설정 수정'), findsOneWidget);
+    expect(find.text('번호 생성'), findsOneWidget);
+  });
   testWidgets('detailed mode opens a temporary settings editor', (
     tester,
   ) async {

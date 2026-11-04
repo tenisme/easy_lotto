@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'domain/recommendation.dart';
 import 'settings_editor.dart';
+import 'preset_store.dart';
 import 'draw_store.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -41,6 +42,18 @@ class _RecommendationHomeState extends State<RecommendationHome> {
   @override
   void initState() {
     super.initState();
+    presetStore
+        .load()
+        .then((_) {
+          if (mounted) setState(() {});
+        })
+        .catchError((Object _) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('저장한 설정을 불러오지 못했습니다.')),
+            );
+          }
+        });
     drawStore.load().then((_) {
       if (mounted) setState(() {});
     });
@@ -50,22 +63,75 @@ class _RecommendationHomeState extends State<RecommendationHome> {
   bool busy = false;
   bool detailed = false;
   RecommendationOptions? draft;
-  Future<void> edit() async {
+  String? activeId;
+  Future<void> choose() async {
+    final id = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final preset in presetStore.items)
+              ListTile(
+                leading: Icon(
+                  preset.id == presetStore.selectedId
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                ),
+                title: Text(preset.name),
+                onTap: () => Navigator.pop(context, preset.id),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'new'),
+              child: const Text('새 설정'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (id == null || !mounted) return;
+    if (id == 'new') {
+      await edit(fresh: true);
+      return;
+    }
+    try {
+      await presetStore.select(id);
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('설정 선택을 저장하지 못했습니다.')));
+      }
+    }
+  }
+
+  Future<void> edit({bool fresh = false}) async {
+    var preset = fresh ? null : presetStore.find(presetStore.selectedId);
     final options = await Navigator.of(context).push<RecommendationOptions>(
       MaterialPageRoute(
-        builder: (_) => SettingsEditor(initial: draft, draws: drawStore.draws),
+        builder: (_) => SettingsEditor(
+          initial: fresh ? null : preset?.options ?? draft,
+          draws: drawStore.draws,
+          presetId: preset?.id,
+          onSaved: (saved) => preset = saved,
+        ),
       ),
     );
     if (options != null && mounted) {
       draft = options;
+      activeId = preset?.id;
       await generate();
     }
+    if (mounted) setState(() {});
   }
 
-  Future<void> generate() async {
+  Future<void> generate({bool selected = false}) async {
     setState(() => busy = true);
     try {
-      final options = detailed ? draft : null;
+      final preset = presetStore.find(presetStore.selectedId);
+      final options = detailed ? (selected ? preset?.options : draft) : null;
+      if (selected) activeId = preset?.id;
       final games = options == null
           ? await compute(generateRandomGames, count)
           : await compute(generateConfiguredGames, (
@@ -76,8 +142,11 @@ class _RecommendationHomeState extends State<RecommendationHome> {
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) =>
-              RecommendationResults(initialGames: games, options: options),
+          builder: (_) => RecommendationResults(
+            initialGames: games,
+            options: options,
+            presetId: detailed ? activeId : null,
+          ),
         ),
       );
     } catch (error) {
@@ -162,20 +231,55 @@ class _RecommendationHomeState extends State<RecommendationHome> {
               ),
             ],
           ),
-          FilledButton(
-            onPressed: busy
-                ? null
-                : detailed
-                ? edit
-                : generate,
-            child: Text(
-              busy
-                  ? '생성 중입니다'
-                  : detailed
-                  ? '설정 만들기'
-                  : '번호 생성',
+          if (detailed)
+            ListTile(
+              title: Text(
+                presetStore.items.isEmpty
+                    ? '저장한 설정이 없습니다'
+                    : presetStore.find(presetStore.selectedId)?.name ?? '설정 선택',
+              ),
+              trailing: const Icon(Icons.expand_more),
+              onTap: presetStore.items.isEmpty ? null : choose,
             ),
-          ),
+          if (detailed && presetStore.items.isNotEmpty)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed:
+                        busy || presetStore.find(presetStore.selectedId) == null
+                        ? null
+                        : edit,
+                    child: const Text('설정 수정'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed:
+                        busy || presetStore.find(presetStore.selectedId) == null
+                        ? null
+                        : () => generate(selected: true),
+                    child: const Text('번호 생성'),
+                  ),
+                ),
+              ],
+            )
+          else
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : detailed
+                  ? edit
+                  : generate,
+              child: Text(
+                busy
+                    ? '생성 중입니다'
+                    : detailed
+                    ? '설정 만들기'
+                    : '번호 생성',
+              ),
+            ),
         ],
       ),
     ),
@@ -187,9 +291,11 @@ class RecommendationResults extends StatefulWidget {
     super.key,
     required this.initialGames,
     this.options,
+    this.presetId,
   });
   final List<LottoGame> initialGames;
   final RecommendationOptions? options;
+  final String? presetId;
   @override
   State<RecommendationResults> createState() => _RecommendationResultsState();
 }
@@ -198,11 +304,18 @@ class _RecommendationResultsState extends State<RecommendationResults> {
   late List<LottoGame> games = widget.initialGames;
   bool busy = false;
   late RecommendationOptions? options = widget.options;
+  late String? presetId = widget.presetId;
   Future<void> edit() async {
     final next = await Navigator.of(context).push<RecommendationOptions>(
       MaterialPageRoute(
-        builder: (_) =>
-            SettingsEditor(initial: options, draws: drawStore.draws),
+        builder: (_) => SettingsEditor(
+          initial: options,
+          draws: drawStore.draws,
+          presetId: presetId,
+          onSaved: (saved) {
+            if (mounted) setState(() => presetId = saved.id);
+          },
+        ),
       ),
     );
     if (next != null && mounted) await regenerate(next);
@@ -267,9 +380,15 @@ class _RecommendationResultsState extends State<RecommendationResults> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text('${options == null ? '완전 랜덤' : '임시 설정'} · ${games.length}게임'),
+          Text(
+            '${options == null ? '완전 랜덤' : presetStore.find(presetId)?.name ?? '임시 설정'} · ${games.length}게임',
+          ),
           if (options != null) ...[
-            const Text('저장되지 않은 설정입니다.'),
+            if (presetStore.find(presetId) == null)
+              const Text('저장되지 않은 설정입니다.'),
+            if (presetStore.find(presetId) != null &&
+                !sameOptions(options!, presetStore.find(presetId)!.options))
+              const Text('생성 후 설정이 변경되었습니다.'),
             TextButton(
               onPressed: busy ? null : edit,
               child: const Text('설정 수정'),

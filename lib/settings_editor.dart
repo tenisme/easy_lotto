@@ -1,16 +1,113 @@
 import 'package:flutter/material.dart';
 import 'domain/recommendation.dart';
+import 'preset_store.dart';
 
 /// Edits a temporary preset; returning an option does not persist it.
 class SettingsEditor extends StatefulWidget {
-  const SettingsEditor({super.key, this.initial, this.draws = const []});
+  const SettingsEditor({
+    super.key,
+    this.initial,
+    this.draws = const [],
+    this.presetId,
+    this.onSaved,
+  });
   final RecommendationOptions? initial;
   final List<DrawResult> draws;
+  final String? presetId;
+  final ValueChanged<Preset>? onSaved;
   @override
   State<SettingsEditor> createState() => _SettingsEditorState();
 }
 
 class _SettingsEditorState extends State<SettingsEditor> {
+  late String? presetId = widget.presetId;
+  bool saving = false;
+  RecommendationOptions currentOptions() => RecommendationOptions(
+    fixed: fixed,
+    excluded: excluded,
+    oddCount: odd,
+    lowCount: low,
+    minSum: sum.start.round(),
+    maxSum: sum.end.round(),
+    groupCount: groups,
+    excludePrevious: previous,
+    previousIncludesBonus: previousBonus,
+    missingCount: missing,
+    missingRounds: missingRounds,
+    missingIncludesBonus: missingBonus,
+    groupLengths: groups == 1
+        ? oneLengths
+        : groups == 2
+        ? twoLengths
+        : null,
+  );
+  Future<void> save({bool rename = false}) async {
+    String? name;
+    if (presetId == null || rename) {
+      final controller = TextEditingController(
+        text: presetStore.find(presetId)?.name ?? presetStore.defaultName(),
+      );
+      name = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(rename ? '이름 변경' : '설정 저장'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(labelText: '설정 이름'),
+              ),
+              const Text('이름은 나중에 변경할 수 있습니다.'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: const Text('저장'),
+            ),
+          ],
+        ),
+      );
+      // Dialog transition may still reference the controller during dismissal.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      controller.dispose();
+      if (name == null || !mounted) return;
+    }
+    setState(() => saving = true);
+    try {
+      final preset = await presetStore.save(
+        rename ? presetStore.find(presetId)!.options : currentOptions(),
+        id: presetId,
+        name: name,
+      );
+      if (!mounted) return;
+      setState(() => presetId = preset.id);
+      widget.onSaved?.call(preset);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('설정을 저장했습니다.')));
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is ArgumentError
+                  ? error.message.toString()
+                  : '설정 저장에 실패했습니다. 다시 시도하십시오.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
   late Set<int> fixed;
   late Set<int> excluded;
   int? odd, low, groups;
@@ -118,7 +215,40 @@ class _SettingsEditorState extends State<SettingsEditor> {
   );
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('상세 설정')),
+    appBar: AppBar(
+      title: const Text('상세 설정'),
+      actions: [
+        if (presetId != null)
+          TextButton(
+            onPressed: saving ? null : () => save(rename: true),
+            child: const Text('이름 변경'),
+          ),
+      ],
+    ),
+    bottomNavigationBar: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: saving ? null : save,
+                child: const Text('설정 저장'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton(
+                onPressed: saving
+                    ? null
+                    : () => Navigator.pop(context, currentOptions()),
+                child: const Text('번호 생성'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(20),
@@ -243,31 +373,6 @@ class _SettingsEditorState extends State<SettingsEditor> {
           TextButton(
             onPressed: () => setState(() => load(RecommendationOptions())),
             child: const Text('모든 설정 초기화'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(
-              context,
-              RecommendationOptions(
-                fixed: fixed,
-                excluded: excluded,
-                oddCount: odd,
-                lowCount: low,
-                minSum: sum.start.round(),
-                maxSum: sum.end.round(),
-                groupCount: groups,
-                excludePrevious: previous,
-                previousIncludesBonus: previousBonus,
-                missingCount: missing,
-                missingRounds: missingRounds,
-                missingIncludesBonus: missingBonus,
-                groupLengths: groups == 1
-                    ? oneLengths
-                    : groups == 2
-                    ? twoLengths
-                    : null,
-              ),
-            ),
-            child: const Text('번호 생성'),
           ),
         ],
       ),
