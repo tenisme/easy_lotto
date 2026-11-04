@@ -26,4 +26,6 @@
 
 저장 계층 구조와 이관·테스트 환경은 `docs/sqlite-storage.md`를 따른다.
 
+Android ARM64 테스트 APK를 GitHub Actions에서 생성했다(소스 `feb42de`, 버전 `0.1.0-preview`). 분석·44개 테스트·APK 빌드와 다운로드한 파일의 서명·정렬 검증을 통과했다. 테스트 앱은 별도 `.preview` 패키지이며 설치·기능·업데이트 실기기 검증은 아직 남아 있다. 다운로드 및 확인 항목은 `docs/android-device-checklist.md`에 정리했다.
+
 이 작업 환경의 기본 사용자 디렉터리는 읽기 전용이므로 Flutter 실행 시 `PUB_CACHE=/workspace/.pub-cache`, `XDG_CONFIG_HOME=/workspace/.flutter-config`, `CI=true`와 `--suppress-analytics`를 사용한다. 분석 시에는 `ANALYZER_STATE_LOCATION_OVERRIDE=/workspace/.analyzer-state`도 지정한다. 일반 개발 PC에서는 기본 `flutter test`, `flutter analyze` 명령을 사용한다.

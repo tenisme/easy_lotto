@@ -2,6 +2,20 @@
 
 대상: ARM64 Android 7.0(API 24) 이상 기기. 테스트 APK는 디버그 서명이며 정식 스토어 배포용이 아니다.
 
+## 이번 테스트 빌드
+
+- 소스 커밋: `feb42de`
+- 버전: `0.1.0-preview` (versionCode 1)
+- [GitHub 빌드·다운로드](https://github.com/tenisme/easy_lotto/actions/runs/41895462064)
+- [ZIP 산출물](https://github.com/tenisme/easy_lotto/actions/runs/41895462064/artifacts/13355169684): 압축 해제 후 `app-debug.apk` 설치. GitHub 로그인이 필요할 수 있다.
+- 산출물 보관 만료: 2026-11-19 04:23 한국 시간. 만료 후에는 새 빌드가 필요하다.
+- APK 약 80MiB, ZIP 약 46MiB.
+- APK SHA-256: `5cc4592aa1299dfb602c4e6d61aa64e882769f349611f3b86325f78e55668302`
+- GitHub 분석·테스트 44건·Android 빌드 성공. 내려받은 APK의 v2 서명·16KiB 페이지 정렬·ARM64 라이브러리·패키지·최소 SDK 확인 완료.
+- 로컬 실행 환경은 JRE만 있어 Java 컴파일러 단계에서 실패했으며, JDK 21을 설정한 GitHub 빌드의 산출물을 검증했다. 실행 환경 안내에 맞춰 SDK 캐시·프록시를 구성했지만 로컬 JDK 추가 설치는 이번 결과에 필요하지 않았다.
+
+서명 검증과 빌드 성공은 실제 휴대폰에서의 기능 검증을 대신하지 않는다. 아래 항목은 사용자 기기에서 확인해야 한다.
+
 ## 설치
 
 - APK를 휴대폰으로 내려받아 실행한다. Android가 요구하면 파일을 연 브라우저 또는 파일 앱에 대해 앱 설치 권한을 허용한다.
