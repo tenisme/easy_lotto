@@ -9,6 +9,48 @@ import 'package:easy_lotto/library.dart';
 import 'package:easy_lotto/paper_store.dart';
 
 void main() {
+  testWidgets('bottom navigation opens all four library categories', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MainApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(NavigationDestination, '보관함'));
+    await tester.pumpAndSettle();
+    expect(find.text('내 번호'), findsOneWidget);
+    expect(find.text('저장한 설정'), findsOneWidget);
+    await tester.tap(find.widgetWithText(NavigationDestination, '더보기'));
+    await tester.pumpAndSettle();
+    expect(find.text('번호 추천 방식 안내'), findsOneWidget);
+    await tester.tap(find.widgetWithText(NavigationDestination, '추천'));
+    await tester.pumpAndSettle();
+    expect(find.text('몇 게임을 만들까요?'), findsOneWidget);
+  });
+  testWidgets('switching result settings can be cancelled before replacement', (
+    tester,
+  ) async {
+    final first = await presetStore.save(RecommendationOptions(), name: '기존');
+    await presetStore.save(RecommendationOptions(oddCount: 3), name: '다른');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RecommendationResults(
+          initialGames: [
+            LottoGame([1, 2, 3, 4, 5, 6]),
+          ],
+          options: first.options,
+          presetId: first.id,
+        ),
+      ),
+    );
+    await tester.tap(find.text('다른 설정 선택'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('다른'));
+    await tester.pumpAndSettle();
+    expect(find.text('새 번호를 생성하시겠습니까?'), findsOneWidget);
+    await tester.tap(find.text('기존 결과로 돌아가기'));
+    await tester.pumpAndSettle();
+    expect(find.text('기존 · 1게임'), findsOneWidget);
+    expect(find.text('6'), findsOneWidget);
+  });
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     presetStore.items = [];

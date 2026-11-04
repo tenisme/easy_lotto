@@ -6,11 +6,14 @@ import 'preset_store.dart';
 import 'paper_store.dart';
 import 'paper_flow.dart';
 import 'paper_view.dart';
+import 'settings_editor.dart';
 
 class SavedGame {
-  SavedGame(this.game, this.options);
+  SavedGame(this.game, this.options, {String? source})
+    : source = source ?? (options == null ? 'random' : 'configured');
   final LottoGame game;
   final RecommendationOptions? options;
+  final String source;
 }
 
 class LibraryStore extends ChangeNotifier {
@@ -38,6 +41,7 @@ class LibraryStore extends ChangeNotifier {
             g['options'] == null
                 ? null
                 : decodeOptions(g['options'] as Map<String, dynamic>),
+            source: g['source'] as String?,
           ),
         )
         .toList();
@@ -58,6 +62,7 @@ class LibraryStore extends ChangeNotifier {
           for (final g in gs)
             {
               'numbers': g.game.numbers,
+              'source': g.source,
               'options': g.options == null ? null : encodeOptions(g.options!),
             },
         ],
@@ -94,92 +99,239 @@ class LibraryStore extends ChangeNotifier {
       });
   Future<void> removeGame(LottoGame game) =>
       _change((_, gs) => gs.removeWhere((g) => g.game == game));
+  Future<void> removeNumbers(Set<int> values) =>
+      _change((ns, _) => ns.removeAll(values));
+  Future<void> editGame(LottoGame? old, LottoGame next) => _change((_, gs) {
+    if (gs.any((g) => g.game == next && g.game != old)) {
+      throw ArgumentError('이미 저장한 조합입니다.');
+    }
+    if (old != null) gs.removeWhere((g) => g.game == old);
+    gs.add(SavedGame(next, null, source: 'manual'));
+  });
 }
 
 final libraryStore = LibraryStore();
 
-class LibraryPage extends StatelessWidget {
-  const LibraryPage({super.key, this.draws = const []});
+class LibraryPage extends StatefulWidget {
+  const LibraryPage({super.key, this.draws = const [], this.onGenerate});
   final List<DrawResult> draws;
+  final Future<void> Function(RecommendationOptions, String?)? onGenerate;
+  @override
+  State<LibraryPage> createState() => _LibraryPageState();
+}
+
+class _LibraryPageState extends State<LibraryPage> {
+  List<DrawResult> get draws => widget.draws;
+  final selectedNumbers = <int>{};
+  final selectedGames = <LottoGame>{};
+  bool changing = false;
+  Future<void> editPreset([Preset? preset]) async {
+    var id = preset?.id;
+    final options = await Navigator.push<RecommendationOptions>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SettingsEditor(
+          initial: preset?.options,
+          presetId: id,
+          draws: draws,
+          onSaved: (p) => id = p.id,
+        ),
+      ),
+    );
+    if (mounted && options != null) await widget.onGenerate?.call(options, id);
+  }
+
+  Future<void> action(Future<void> Function() task) async {
+    if (changing) return;
+    changing = true;
+    try {
+      await task();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e is ArgumentError ? e.message.toString() : '변경 사항을 저장하지 못했습니다.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      changing = false;
+    }
+  }
+
+  Future<bool> confirm(String message) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('삭제'),
+            ),
+          ],
+        ),
+      ) ==
+      true;
+  Future<void> editGame([LottoGame? old]) async {
+    final next = await Navigator.push<LottoGame>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            GameComposer(initialGame: old, draws: draws, actionLabel: '조합 저장'),
+      ),
+    );
+    if (next != null) await action(() => libraryStore.editGame(old, next));
+    if (mounted) {
+      setState(
+        () => selectedGames.removeWhere((g) => !libraryStore.contains(g)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    length: 3,
+    length: 4,
     child: Scaffold(
       appBar: AppBar(
         title: const Text('보관함'),
         bottom: const TabBar(
+          isScrollable: true,
           tabs: [
             Tab(text: '내 번호'),
             Tab(text: '저장한 조합'),
             Tab(text: '복권 용지'),
+            Tab(text: '저장한 설정'),
           ],
         ),
       ),
       body: ListenableBuilder(
-        listenable: Listenable.merge([libraryStore, paperStore]),
+        listenable: Listenable.merge([libraryStore, paperStore, presetStore]),
         builder: (context, _) => TabBarView(
           children: [
             SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: libraryStore.numbers.isEmpty
                   ? const Text('저장한 번호가 없습니다.')
-                  : Wrap(
-                      spacing: 8,
+                  : Column(
                       children: [
-                        for (final n in (libraryStore.numbers.toList()..sort()))
-                          Chip(label: Text('$n')),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            for (final n
+                                in (libraryStore.numbers.toList()..sort()))
+                              FilterChip(
+                                label: Text('$n'),
+                                selected: selectedNumbers.contains(n),
+                                onSelected: (v) => setState(() {
+                                  if (v) {
+                                    selectedNumbers.add(n);
+                                  } else {
+                                    selectedNumbers.remove(n);
+                                  }
+                                }),
+                              ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: selectedNumbers.isEmpty
+                              ? null
+                              : () async {
+                                  if (await confirm('선택한 번호를 삭제하시겠습니까?')) {
+                                    await action(
+                                      () => libraryStore.removeNumbers({
+                                        ...selectedNumbers,
+                                      }),
+                                    );
+                                    if (mounted) {
+                                      setState(() => selectedNumbers.clear());
+                                    }
+                                  }
+                                },
+                          child: const Text('선택 번호 삭제'),
+                        ),
                       ],
                     ),
             ),
-            libraryStore.games.isEmpty
-                ? const Center(child: Text('저장한 조합이 없습니다.'))
-                : ListView(
-                    children: [
-                      for (final saved in libraryStore.games)
-                        ListTile(
-                          title: Text(saved.game.numbers.join(' · ')),
-                          subtitle: Text(
-                            saved.options == null ? '완전 랜덤' : '상세 설정',
-                          ),
-                          trailing: IconButton(
-                            tooltip: '조합 삭제',
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () async {
-                              final yes = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('조합을 삭제하시겠습니까?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('취소'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: const Text('삭제'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (yes != true) return;
-                              try {
-                                await libraryStore.removeGame(saved.game);
-                              } catch (_) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('삭제에 실패했습니다.'),
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                          ),
+            ListView(
+              children: [
+                TextButton(onPressed: editGame, child: const Text('조합 직접 추가')),
+                if (libraryStore.games.isEmpty) const Text('저장한 조합이 없습니다.'),
+                TextButton(
+                  onPressed: selectedGames.isEmpty || selectedGames.length > 5
+                      ? null
+                      : () => saveResultsToPaper(
+                          context,
+                          selectedGames.toList(),
+                          draws,
                         ),
-                    ],
+                  child: const Text('선택 조합으로 복권 용지 만들기'),
+                ),
+                for (final saved in libraryStore.games)
+                  ListTile(
+                    leading: Checkbox(
+                      value: selectedGames.contains(saved.game),
+                      onChanged: (v) => setState(() {
+                        if (v == true) {
+                          selectedGames.add(saved.game);
+                        } else {
+                          selectedGames.remove(saved.game);
+                        }
+                      }),
+                    ),
+                    onTap: () => editGame(saved.game),
+                    title: Text(saved.game.numbers.join(' · ')),
+                    subtitle: Text(
+                      saved.source == 'manual'
+                          ? '직접 입력'
+                          : saved.options == null
+                          ? '완전 랜덤'
+                          : '상세 설정',
+                    ),
+                    trailing: IconButton(
+                      tooltip: '조합 삭제',
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        final yes = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('조합을 삭제하시겠습니까?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('취소'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('삭제'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (yes != true) return;
+                        try {
+                          await libraryStore.removeGame(saved.game);
+                          if (mounted) {
+                            setState(() => selectedGames.remove(saved.game));
+                          }
+                        } catch (_) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('삭제에 실패했습니다.')),
+                            );
+                          }
+                        }
+                      },
+                    ),
                   ),
+              ],
+            ),
             ListView(
               children: [
                 TextButton(
@@ -198,7 +350,15 @@ class LibraryPage extends StatelessWidget {
                         ListTile(
                           title: Text(p.title),
                           subtitle: Text('${p.games.length}게임'),
-                          trailing: const Icon(Icons.edit),
+                          trailing: IconButton(
+                            tooltip: '용지 삭제',
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () async {
+                              if (await confirm('이 복권 용지를 삭제하시겠습니까?')) {
+                                await action(() => paperStore.delete(p.id));
+                              }
+                            },
+                          ),
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute<void>(
@@ -223,6 +383,33 @@ class LibraryPage extends StatelessWidget {
                             ),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            ListView(
+              children: [
+                TextButton(onPressed: editPreset, child: const Text('새 설정')),
+                for (final p in presetStore.items)
+                  ListTile(
+                    title: Text(p.name),
+                    onTap: () => editPreset(p),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'copy') {
+                          await action(() async {
+                            await presetStore.save(p.options);
+                          });
+                        }
+                        if (value == 'delete' &&
+                            await confirm('이 설정을 삭제하시겠습니까?')) {
+                          await action(() => presetStore.delete(p.id));
+                        }
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'copy', child: Text('복제')),
+                        PopupMenuItem(value: 'delete', child: Text('삭제')),
                       ],
                     ),
                   ),

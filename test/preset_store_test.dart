@@ -6,6 +6,15 @@ import 'package:easy_lotto/domain/recommendation.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+  test('deleting selected preset clears restored selection', () async {
+    final store = PresetStore();
+    final p = await store.save(RecommendationOptions());
+    await store.delete(p.id);
+    final restored = PresetStore();
+    await restored.load();
+    expect(restored.items, isEmpty);
+    expect(restored.selectedId, isNull);
+  });
   test(
     'options survive storage including both draw scopes and group lengths',
     () async {

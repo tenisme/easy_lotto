@@ -277,14 +277,27 @@ LottoGame _generate((RecommendationOptions, List<DrawResult>) request) =>
     RecommendationEngine().generate(request.$1, draws: request.$2).single;
 
 class GameComposer extends StatefulWidget {
-  const GameComposer({super.key, this.draws = const []});
+  const GameComposer({
+    super.key,
+    this.draws = const [],
+    this.initialGame,
+    this.actionLabel = '복권 용지에 추가',
+  });
   final List<DrawResult> draws;
+  final LottoGame? initialGame;
+  final String actionLabel;
   @override
   State<GameComposer> createState() => _GameComposerState();
 }
 
 class _GameComposerState extends State<GameComposer> {
   final selected = <int>{};
+  @override
+  void initState() {
+    super.initState();
+    selected.addAll(widget.initialGame?.numbers ?? []);
+  }
+
   int mode = 0;
   bool busy = false;
   RecommendationOptions? options;
@@ -405,7 +418,7 @@ class _GameComposerState extends State<GameComposer> {
           onPressed: busy || selected.length != 6
               ? null
               : () => Navigator.pop(context, LottoGame(selected)),
-          child: const Text('복권 용지에 추가'),
+          child: Text(widget.actionLabel),
         ),
       ],
     ),

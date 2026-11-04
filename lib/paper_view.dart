@@ -382,8 +382,9 @@ class _DesignSettingsState extends State<DesignSettings> {
                 onChanged: saving || mode != DesignMode.perPaper
                     ? null
                     : (v) => setState(
-                        () =>
-                            paperDesign = v == -1 ? null : PaperDesign.values[v!],
+                        () => paperDesign = v == -1
+                            ? null
+                            : PaperDesign.values[v!],
                       ),
               ),
               for (final s in PaperDesign.values) ...[

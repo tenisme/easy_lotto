@@ -89,6 +89,37 @@ class PaperStore extends ChangeNotifier {
     await task;
     return saved;
   }
+
+  Future<void> delete(String id) {
+    Future<void> perform() async {
+      final next = items.where((p) => p.id != id).toList();
+      if (!await (await SharedPreferences.getInstance()).setString(
+        'papers.v1',
+        jsonEncode([
+          for (final p in next)
+            {
+              'id': p.id,
+              'title': p.title,
+              'games': [for (final g in p.games) g.numbers],
+            },
+        ]),
+      )) {
+        throw StateError('용지 삭제 실패');
+      }
+      items = next;
+      notifyListeners();
+    }
+
+    final task = _pending == null
+        ? perform()
+        : _pending!.then((_) => perform());
+    final tail = task.catchError((Object _) {});
+    _pending = tail;
+    tail.then((_) {
+      if (identical(_pending, tail)) _pending = null;
+    });
+    return task;
+  }
 }
 
 final paperStore = PaperStore();

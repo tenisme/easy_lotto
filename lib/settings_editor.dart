@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'domain/recommendation.dart';
 import 'preset_store.dart';
 import 'exit_guard.dart';
+import 'library.dart';
 
 /// Edits a temporary preset; returning an option does not persist it.
 class SettingsEditor extends StatefulWidget {
@@ -140,6 +141,7 @@ class _SettingsEditorState extends State<SettingsEditor> {
   }
 
   Future<void> pickNumbers(bool isFixed) async {
+    bool favoritesOnly = false;
     final selected = {...(isFixed ? fixed : excluded)};
     final blocked = isFixed ? excluded : fixed;
     final result = await showDialog<Set<int>>(
@@ -150,26 +152,37 @@ class _SettingsEditorState extends State<SettingsEditor> {
           content: SizedBox(
             width: 360,
             child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 4,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (var n = 1; n <= 45; n++)
-                    FilterChip(
-                      label: Text('$n'),
-                      selected: selected.contains(n),
-                      onSelected:
-                          blocked.contains(n) ||
-                              (!selected.contains(n) &&
-                                  selected.length >= (isFixed ? 6 : 39))
-                          ? null
-                          : (value) => update(() {
-                              if (value) {
-                                selected.add(n);
-                              } else {
-                                selected.remove(n);
-                              }
-                            }),
-                    ),
+                  TextButton(
+                    onPressed: () =>
+                        update(() => favoritesOnly = !favoritesOnly),
+                    child: Text(favoritesOnly ? '전체 번호 보기' : '내 번호에서 선택'),
+                  ),
+                  Wrap(
+                    spacing: 4,
+                    children: [
+                      for (var n = 1; n <= 45; n++)
+                        if (!favoritesOnly || libraryStore.numbers.contains(n))
+                          FilterChip(
+                            label: Text('$n'),
+                            selected: selected.contains(n),
+                            onSelected:
+                                blocked.contains(n) ||
+                                    (!selected.contains(n) &&
+                                        selected.length >= (isFixed ? 6 : 39))
+                                ? null
+                                : (value) => update(() {
+                                    if (value) {
+                                      selected.add(n);
+                                    } else {
+                                      selected.remove(n);
+                                    }
+                                  }),
+                          ),
+                    ],
+                  ),
                 ],
               ),
             ),

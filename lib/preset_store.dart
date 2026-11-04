@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'domain/recommendation.dart';
 
@@ -46,7 +47,7 @@ class Preset {
   final RecommendationOptions options;
 }
 
-class PresetStore {
+class PresetStore extends ChangeNotifier {
   List<Preset> items = [];
   String? selectedId;
   Preset? find(String? id) => items.where((p) => p.id == id).firstOrNull;
@@ -56,6 +57,7 @@ class PresetStore {
     if (body == null) {
       items = [];
       selectedId = null;
+      notifyListeners();
       return;
     }
     final j = jsonDecode(body) as Map<String, dynamic>;
@@ -70,6 +72,7 @@ class PresetStore {
         .toList();
     items = loaded;
     selectedId = find(j['selected'] as String?)?.id;
+    notifyListeners();
   }
 
   String defaultName() {
@@ -96,6 +99,7 @@ class PresetStore {
     }
     items = next;
     selectedId = selected;
+    notifyListeners();
   }
 
   Future<Preset> save(
@@ -130,6 +134,11 @@ class PresetStore {
     if (find(id) == null) throw ArgumentError('설정을 찾을 수 없습니다.');
     await _write(items, id);
   }
+
+  Future<void> delete(String id) => _write([
+    for (final p in items)
+      if (p.id != id) p,
+  ], selectedId == id ? null : selectedId);
 }
 
 final presetStore = PresetStore();

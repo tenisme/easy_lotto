@@ -43,6 +43,7 @@ class RecommendationHome extends StatefulWidget {
 }
 
 class _RecommendationHomeState extends State<RecommendationHome> {
+  int tab = 0;
   @override
   void initState() {
     super.initState();
@@ -186,134 +187,193 @@ class _RecommendationHomeState extends State<RecommendationHome> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('추천'),
-      actions: [
-        IconButton(
-          tooltip: '보관함',
-          icon: const Icon(Icons.inventory_2_outlined),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => LibraryPage(draws: drawStore.draws),
-            ),
+    appBar: tab != 0
+        ? null
+        : AppBar(
+            title: const Text('추천'),
+            actions: [
+              IconButton(
+                tooltip: '보관함',
+                icon: const Icon(Icons.inventory_2_outlined),
+                onPressed: () => setState(() => tab = 1),
+              ),
+            ],
           ),
+    bottomNavigationBar: NavigationBar(
+      selectedIndex: tab,
+      onDestinationSelected: (v) => setState(() => tab = v),
+      destinations: const [
+        NavigationDestination(icon: Icon(Icons.home_outlined), label: '추천'),
+        NavigationDestination(
+          icon: Icon(Icons.inventory_2_outlined),
+          label: '보관함',
         ),
+        NavigationDestination(icon: Icon(Icons.more_horiz), label: '더보기'),
       ],
     ),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Text('몇 게임을 만들까요?', style: TextStyle(fontSize: 22)),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (var n = 1; n <= 5; n++)
-                ChoiceChip(
-                  label: Text('$n'),
-                  selected: count == n,
-                  onSelected: busy ? null : (_) => setState(() => count = n),
-                ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          if (!detailed)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('완전 랜덤', style: TextStyle(fontSize: 20)),
-                    SizedBox(height: 8),
-                    Text('조건 없이 서로 다른 번호 6개를 생성합니다.'),
-                  ],
-                ),
-              ),
-            ),
-          const SizedBox(height: 24),
-          Text(drawStore.status),
-          TextButton(
-            onPressed: () async {
-              await launchUrl(
-                Uri.parse('https://www.dhlottery.co.kr/'),
-                mode: LaunchMode.externalApplication,
-              );
+    body: tab == 1
+        ? LibraryPage(
+            draws: drawStore.draws,
+            onGenerate: (options, id) async {
+              setState(() {
+                tab = 0;
+                detailed = true;
+                draft = options;
+                activeId = id;
+              });
+              await generate();
             },
-            child: const Text('출처 : 동행복권'),
-          ),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('완전 랜덤'),
-                selected: !detailed,
-                onSelected: busy
-                    ? null
-                    : (_) => setState(() => detailed = false),
-              ),
-              ChoiceChip(
-                label: const Text('상세 설정'),
-                selected: detailed,
-                onSelected: busy
-                    ? null
-                    : (_) => setState(() => detailed = true),
-              ),
-            ],
-          ),
-          if (detailed)
-            ListTile(
-              title: Text(
-                presetStore.items.isEmpty
-                    ? '저장한 설정이 없습니다'
-                    : presetStore.find(presetStore.selectedId)?.name ?? '설정 선택',
-              ),
-              trailing: const Icon(Icons.expand_more),
-              onTap: presetStore.items.isEmpty ? null : choose,
-            ),
-          if (detailed && presetStore.items.isNotEmpty)
-            Row(
+          )
+        : tab == 2
+        ? SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed:
-                        busy || presetStore.find(presetStore.selectedId) == null
-                        ? null
-                        : edit,
-                    child: const Text('설정 수정'),
+                const Text('더보기', style: TextStyle(fontSize: 24)),
+                Text(drawStore.status),
+                TextButton(
+                  onPressed: () => launchUrl(
+                    Uri.parse('https://www.dhlottery.co.kr/'),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  child: const Text('출처 : 동행복권'),
+                ),
+                const ListTile(
+                  title: Text('번호 추천 방식 안내'),
+                  subtitle: Text(
+                    '추첨은 매회 독립적으로 이루어지며, 추천 조건과 과거 결과는 당첨을 예측하거나 보장하지 않습니다.',
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed:
-                        busy || presetStore.find(presetStore.selectedId) == null
-                        ? null
-                        : () => generate(selected: true),
-                    child: const Text('번호 생성'),
+                const ListTile(
+                  title: Text('저장 안내'),
+                  subtitle: Text(
+                    '번호와 설정은 이 기기에 저장됩니다. 앱 삭제 시 데이터가 사라질 수 있습니다.',
                   ),
                 ),
               ],
-            )
-          else
-            FilledButton(
-              onPressed: busy
-                  ? null
-                  : detailed
-                  ? edit
-                  : generate,
-              child: Text(
-                busy
-                    ? '생성 중입니다'
-                    : detailed
-                    ? '설정 만들기'
-                    : '번호 생성',
-              ),
             ),
-        ],
-      ),
-    ),
+          )
+        : SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                const Text('몇 게임을 만들까요?', style: TextStyle(fontSize: 22)),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (var n = 1; n <= 5; n++)
+                      ChoiceChip(
+                        label: Text('$n'),
+                        selected: count == n,
+                        onSelected: busy
+                            ? null
+                            : (_) => setState(() => count = n),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                if (!detailed)
+                  const Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('완전 랜덤', style: TextStyle(fontSize: 20)),
+                          SizedBox(height: 8),
+                          Text('조건 없이 서로 다른 번호 6개를 생성합니다.'),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                Text(drawStore.status),
+                TextButton(
+                  onPressed: () async {
+                    await launchUrl(
+                      Uri.parse('https://www.dhlottery.co.kr/'),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                  child: const Text('출처 : 동행복권'),
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('완전 랜덤'),
+                      selected: !detailed,
+                      onSelected: busy
+                          ? null
+                          : (_) => setState(() => detailed = false),
+                    ),
+                    ChoiceChip(
+                      label: const Text('상세 설정'),
+                      selected: detailed,
+                      onSelected: busy
+                          ? null
+                          : (_) => setState(() => detailed = true),
+                    ),
+                  ],
+                ),
+                if (detailed)
+                  ListTile(
+                    title: Text(
+                      presetStore.items.isEmpty
+                          ? '저장한 설정이 없습니다'
+                          : presetStore.find(presetStore.selectedId)?.name ??
+                                '설정 선택',
+                    ),
+                    trailing: const Icon(Icons.expand_more),
+                    onTap: presetStore.items.isEmpty ? null : choose,
+                  ),
+                if (detailed && presetStore.items.isNotEmpty)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed:
+                              busy ||
+                                  presetStore.find(presetStore.selectedId) ==
+                                      null
+                              ? null
+                              : edit,
+                          child: const Text('설정 수정'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed:
+                              busy ||
+                                  presetStore.find(presetStore.selectedId) ==
+                                      null
+                              ? null
+                              : () => generate(selected: true),
+                          child: const Text('번호 생성'),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  FilledButton(
+                    onPressed: busy
+                        ? null
+                        : detailed
+                        ? edit
+                        : generate,
+                    child: Text(
+                      busy
+                          ? '생성 중입니다'
+                          : detailed
+                          ? '설정 만들기'
+                          : '번호 생성',
+                    ),
+                  ),
+              ],
+            ),
+          ),
   );
 }
 
@@ -332,6 +392,27 @@ class RecommendationResults extends StatefulWidget {
 }
 
 class _RecommendationResultsState extends State<RecommendationResults> {
+  Future<void> otherSettings() async {
+    final id = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final p in presetStore.items)
+              ListTile(
+                title: Text(p.name),
+                trailing: const Text('이 설정으로 생성'),
+                onTap: () => Navigator.pop(context, p.id),
+              ),
+          ],
+        ),
+      ),
+    );
+    final preset = presetStore.find(id);
+    if (mounted && preset != null) await regenerate(preset.options, preset.id);
+  }
+
   bool get unsavedResults => games.any(
     (g) =>
         !libraryStore.contains(g) &&
@@ -370,7 +451,10 @@ class _RecommendationResultsState extends State<RecommendationResults> {
     if (next != null && mounted) await regenerate(next);
   }
 
-  Future<void> regenerate([RecommendationOptions? edited]) async {
+  Future<void> regenerate([
+    RecommendationOptions? edited,
+    String? replacementId,
+  ]) async {
     final confirmed =
         !unsavedResults ||
         await showDialog<bool>(
@@ -408,6 +492,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
         setState(() {
           games = next;
           options = configuration;
+          if (replacementId != null) presetId = replacementId;
         });
       }
     } catch (error) {
@@ -444,6 +529,12 @@ class _RecommendationResultsState extends State<RecommendationResults> {
             children: [
               Text(
                 '${options == null ? '완전 랜덤' : presetStore.find(presetId)?.name ?? '임시 설정'} · ${games.length}게임',
+              ),
+              TextButton(
+                onPressed: busy || presetStore.items.length < 2
+                    ? null
+                    : otherSettings,
+                child: const Text('다른 설정 선택'),
               ),
               if (options != null) ...[
                 if (presetStore.find(presetId) == null)
