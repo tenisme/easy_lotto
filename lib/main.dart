@@ -4,6 +4,8 @@ import 'domain/recommendation.dart';
 import 'settings_editor.dart';
 import 'preset_store.dart';
 import 'library.dart';
+import 'paper_store.dart';
+import 'paper_flow.dart';
 import 'exit_guard.dart';
 import 'draw_store.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -44,6 +46,13 @@ class _RecommendationHomeState extends State<RecommendationHome> {
   @override
   void initState() {
     super.initState();
+    paperStore.load().catchError((Object _) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('복권 용지를 불러오지 못했습니다.')));
+      }
+    });
     libraryStore.load().catchError((Object _) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -183,9 +192,11 @@ class _RecommendationHomeState extends State<RecommendationHome> {
         IconButton(
           tooltip: '보관함',
           icon: const Icon(Icons.inventory_2_outlined),
-          onPressed: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const LibraryPage())),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => LibraryPage(draws: drawStore.draws),
+            ),
+          ),
         ),
       ],
     ),
@@ -321,7 +332,11 @@ class RecommendationResults extends StatefulWidget {
 }
 
 class _RecommendationResultsState extends State<RecommendationResults> {
-  bool get unsavedResults => games.any((g) => !libraryStore.contains(g));
+  bool get unsavedResults => games.any(
+    (g) =>
+        !libraryStore.contains(g) &&
+        !paperStore.items.any((p) => p.games.contains(g)),
+  );
   bool get temporary => options != null && presetStore.find(presetId) == null;
   Future<void> persist(Future<void> Function() action) async {
     try {
@@ -493,6 +508,19 @@ class _RecommendationResultsState extends State<RecommendationResults> {
               FilledButton(
                 onPressed: busy ? null : regenerate,
                 child: Text(busy ? '생성 중입니다' : '다시 생성'),
+              ),
+              FilledButton(
+                onPressed: busy
+                    ? null
+                    : () async {
+                        final saved = await saveResultsToPaper(
+                          context,
+                          games,
+                          drawStore.draws,
+                        );
+                        if (mounted && saved) setState(() {});
+                      },
+                child: const Text('복권 용지에 저장'),
               ),
             ],
           ),

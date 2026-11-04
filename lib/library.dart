@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'domain/recommendation.dart';
 import 'preset_store.dart';
+import 'paper_store.dart';
+import 'paper_flow.dart';
 
 class SavedGame {
   SavedGame(this.game, this.options);
@@ -96,10 +98,11 @@ class LibraryStore extends ChangeNotifier {
 final libraryStore = LibraryStore();
 
 class LibraryPage extends StatelessWidget {
-  const LibraryPage({super.key});
+  const LibraryPage({super.key, this.draws = const []});
+  final List<DrawResult> draws;
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    length: 2,
+    length: 3,
     child: Scaffold(
       appBar: AppBar(
         title: const Text('보관함'),
@@ -107,11 +110,12 @@ class LibraryPage extends StatelessWidget {
           tabs: [
             Tab(text: '내 번호'),
             Tab(text: '저장한 조합'),
+            Tab(text: '복권 용지'),
           ],
         ),
       ),
       body: ListenableBuilder(
-        listenable: libraryStore,
+        listenable: Listenable.merge([libraryStore, paperStore]),
         builder: (context, _) => TabBarView(
           children: [
             SingleChildScrollView(
@@ -175,6 +179,31 @@ class LibraryPage extends StatelessWidget {
                         ),
                     ],
                   ),
+            ListView(
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => PaperEditor(draws: draws),
+                    ),
+                  ),
+                  child: const Text('새 복권 용지'),
+                ),
+                for (final p in paperStore.items)
+                  ListTile(
+                    title: Text(p.title),
+                    subtitle: Text('${p.games.length}게임'),
+                    trailing: const Icon(Icons.edit),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => PaperEditor(paper: p, draws: draws),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

@@ -6,6 +6,7 @@ import 'package:easy_lotto/settings_editor.dart';
 import 'package:easy_lotto/preset_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_lotto/library.dart';
+import 'package:easy_lotto/paper_store.dart';
 
 void main() {
   setUp(() {
@@ -14,6 +15,7 @@ void main() {
     presetStore.selectedId = null;
     libraryStore.numbers = {};
     libraryStore.games = [];
+    paperStore.items = [];
   });
   testWidgets('dirty editor back warns and cancel keeps draft', (tester) async {
     await tester.pumpWidget(
