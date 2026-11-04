@@ -5,6 +5,7 @@ import 'domain/recommendation.dart';
 import 'preset_store.dart';
 import 'paper_store.dart';
 import 'paper_flow.dart';
+import 'paper_view.dart';
 
 class SavedGame {
   SavedGame(this.game, this.options);
@@ -191,15 +192,38 @@ class LibraryPage extends StatelessWidget {
                   child: const Text('새 복권 용지'),
                 ),
                 for (final p in paperStore.items)
-                  ListTile(
-                    title: Text(p.title),
-                    subtitle: Text('${p.games.length}게임'),
-                    trailing: const Icon(Icons.edit),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => PaperEditor(paper: p, draws: draws),
-                      ),
+                  Card(
+                    child: Column(
+                      children: [
+                        ListTile(
+                          title: Text(p.title),
+                          subtitle: Text('${p.games.length}게임'),
+                          trailing: const Icon(Icons.edit),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  PaperEditor(paper: p, draws: draws),
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      PaperView(paper: p, draws: draws),
+                                ),
+                              ),
+                              child: const Text('번호 크게 보기'),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
