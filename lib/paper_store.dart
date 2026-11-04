@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'local_storage.dart';
 import 'domain/recommendation.dart';
 
 class LotteryPaper {
@@ -18,7 +18,7 @@ class PaperStore extends ChangeNotifier {
   List<LotteryPaper> items = [];
   Future<void>? _pending;
   Future<void> load() async {
-    final body = (await SharedPreferences.getInstance()).getString('papers.v1');
+    final body = (await LocalStorage.getInstance()).getString('papers.v1');
     final loaded = body == null
         ? <LotteryPaper>[]
         : (jsonDecode(body) as List)
@@ -61,7 +61,7 @@ class PaperStore extends ChangeNotifier {
           if (p.id != saved.id) p,
         saved,
       ];
-      if (!await (await SharedPreferences.getInstance()).setString(
+      if (!await (await LocalStorage.getInstance()).setString(
         'papers.v1',
         jsonEncode([
           for (final p in next)
@@ -93,7 +93,7 @@ class PaperStore extends ChangeNotifier {
   Future<void> delete(String id) {
     Future<void> perform() async {
       final next = items.where((p) => p.id != id).toList();
-      if (!await (await SharedPreferences.getInstance()).setString(
+      if (!await (await LocalStorage.getInstance()).setString(
         'papers.v1',
         jsonEncode([
           for (final p in next)

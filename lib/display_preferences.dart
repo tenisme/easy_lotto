@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'local_storage.dart';
 
 enum PaperDesign { basic, spacious, cards }
 
@@ -24,7 +24,7 @@ class DisplayPreferences {
       PaperDesign.values[random.nextInt(PaperDesign.values.length)],
   };
   static Future<DisplayPreferences> load() async {
-    final raw = (await SharedPreferences.getInstance()).getString('display.v1');
+    final raw = (await LocalStorage.getInstance()).getString('display.v1');
     if (raw == null) return DisplayPreferences();
     final j = jsonDecode(raw) as Map<String, dynamic>;
     return DisplayPreferences(
@@ -37,7 +37,7 @@ class DisplayPreferences {
   }
 
   Future<void> save() async {
-    if (!await (await SharedPreferences.getInstance()).setString(
+    if (!await (await LocalStorage.getInstance()).setString(
       'display.v1',
       jsonEncode({
         'mode': mode.name,

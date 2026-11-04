@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'local_storage.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'display_preferences.dart';
 import 'domain/recommendation.dart';
@@ -44,7 +44,7 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
         design = preferences.resolve(paper.id, random);
         ready = true;
       });
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await LocalStorage.getInstance();
       if (!mounted || prefs.getBool('largeViewIntro.v1') == true) return;
       final confirmed = await showDialog<bool>(
         context: context,

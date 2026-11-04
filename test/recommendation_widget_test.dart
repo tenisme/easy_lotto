@@ -7,6 +7,7 @@ import 'package:easy_lotto/preset_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:easy_lotto/library.dart';
 import 'package:easy_lotto/paper_store.dart';
+import 'package:easy_lotto/local_storage.dart';
 
 void main() {
   testWidgets('bottom navigation opens all four library categories', (
@@ -51,13 +52,14 @@ void main() {
     expect(find.text('기존 · 1게임'), findsOneWidget);
     expect(find.text('6'), findsOneWidget);
   });
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
     presetStore.items = [];
     presetStore.selectedId = null;
     libraryStore.numbers = {};
     libraryStore.games = [];
     paperStore.items = [];
+    LocalStorage.testValues = {};
   });
   testWidgets('dirty editor back warns and cancel keeps draft', (tester) async {
     await tester.pumpWidget(

@@ -5,15 +5,17 @@ import 'package:easy_lotto/domain/recommendation.dart';
 import 'package:easy_lotto/paper_store.dart';
 import 'package:easy_lotto/paper_flow.dart';
 import 'package:easy_lotto/library.dart';
+import 'package:easy_lotto/local_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final a = LottoGame([1, 2, 3, 4, 5, 6]);
   final b = LottoGame([7, 8, 9, 10, 11, 12]);
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
     paperStore.items = [];
     libraryStore.games = [];
+    LocalStorage.testValues = {};
   });
   test(
     'paper keeps independent numbers, order and default title after restart',

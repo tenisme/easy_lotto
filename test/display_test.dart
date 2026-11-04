@@ -6,15 +6,17 @@ import 'package:easy_lotto/display_preferences.dart';
 import 'package:easy_lotto/paper_view.dart';
 import 'package:easy_lotto/paper_store.dart';
 import 'package:easy_lotto/domain/recommendation.dart';
+import 'package:easy_lotto/local_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final paper = LotteryPaper('p', '복권 용지 1', [
     LottoGame([3, 11, 17, 24, 32, 42]),
   ]);
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
     paperStore.items = [];
+    LocalStorage.testValues = {};
   });
   test(
     'global, override fallback and random retain previous selections',
@@ -72,7 +74,7 @@ void main() {
   testWidgets('random stays stable on rebuild and wakelock releases on exit', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({'largeViewIntro.v1': true});
+    await (await LocalStorage.getInstance()).setBool('largeViewIntro.v1', true);
     await DisplayPreferences(mode: DesignMode.random).save();
     final calls = <bool>[];
     await tester.pumpWidget(

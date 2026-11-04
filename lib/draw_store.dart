@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'local_storage.dart';
 import 'domain/recommendation.dart';
 
 DrawResult? parseDraw(String body, int round) {
@@ -69,7 +69,7 @@ class DrawStore {
   Future<void> _load() async {
     try {
       _replace(parseSnapshot(await _snapshot()));
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await LocalStorage.getInstance();
       final merged = {for (final d in draws) d.round: d};
       try {
         final cached = (prefs.getStringList('draws.v1') ?? [])

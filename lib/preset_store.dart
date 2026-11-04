@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'local_storage.dart';
 import 'domain/recommendation.dart';
 
 Map<String, Object?> encodeOptions(RecommendationOptions o) => {
@@ -52,7 +52,7 @@ class PresetStore extends ChangeNotifier {
   String? selectedId;
   Preset? find(String? id) => items.where((p) => p.id == id).firstOrNull;
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await LocalStorage.getInstance();
     final body = prefs.getString('presets.v1');
     if (body == null) {
       items = [];
@@ -84,7 +84,7 @@ class PresetStore extends ChangeNotifier {
   }
 
   Future<void> _write(List<Preset> next, String? selected) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await LocalStorage.getInstance();
     if (!await prefs.setString(
       'presets.v1',
       jsonEncode({

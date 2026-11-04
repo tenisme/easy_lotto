@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:easy_lotto/local_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:easy_lotto/draw_store.dart';
 
@@ -26,7 +27,7 @@ void main() {
     await store.load();
     expect(store.draws.length, 1248);
     expect(
-      (await SharedPreferences.getInstance()).getStringList('draws.v1')!.length,
+      (await LocalStorage.getInstance()).getStringList('draws.v1')!.length,
       1248,
     );
   });

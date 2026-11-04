@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'local_storage.dart';
 import 'domain/recommendation.dart';
 import 'preset_store.dart';
 import 'paper_store.dart';
@@ -21,9 +21,7 @@ class LibraryStore extends ChangeNotifier {
   List<SavedGame> games = [];
   Future<void>? _pending;
   Future<void> load() async {
-    final body = (await SharedPreferences.getInstance()).getString(
-      'library.v1',
-    );
+    final body = (await LocalStorage.getInstance()).getString('library.v1');
     if (body == null) {
       numbers = {};
       games = [];
@@ -67,7 +65,7 @@ class LibraryStore extends ChangeNotifier {
             },
         ],
       });
-      if (!await (await SharedPreferences.getInstance()).setString(
+      if (!await (await LocalStorage.getInstance()).setString(
         'library.v1',
         body,
       )) {
