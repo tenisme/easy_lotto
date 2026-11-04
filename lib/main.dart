@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'domain/recommendation.dart';
 import 'settings_editor.dart';
+import 'draw_store.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+final drawStore = DrawStore();
 
 void main() {
   runApp(const MainApp());
@@ -19,8 +23,13 @@ class MainApp extends StatelessWidget {
 List<LottoGame> generateRandomGames(int count) =>
     RecommendationEngine().generate(RecommendationOptions(), count: count);
 
-List<LottoGame> generateConfiguredGames((RecommendationOptions, int) request) =>
-    RecommendationEngine().generate(request.$1, count: request.$2);
+List<LottoGame> generateConfiguredGames(
+  (RecommendationOptions, int, List<DrawResult>) request,
+) => RecommendationEngine().generate(
+  request.$1,
+  count: request.$2,
+  draws: request.$3,
+);
 
 class RecommendationHome extends StatefulWidget {
   const RecommendationHome({super.key});
@@ -29,13 +38,23 @@ class RecommendationHome extends StatefulWidget {
 }
 
 class _RecommendationHomeState extends State<RecommendationHome> {
+  @override
+  void initState() {
+    super.initState();
+    drawStore.load().then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   int count = 1;
   bool busy = false;
   bool detailed = false;
   RecommendationOptions? draft;
   Future<void> edit() async {
     final options = await Navigator.of(context).push<RecommendationOptions>(
-      MaterialPageRoute(builder: (_) => SettingsEditor(initial: draft)),
+      MaterialPageRoute(
+        builder: (_) => SettingsEditor(initial: draft, draws: drawStore.draws),
+      ),
     );
     if (options != null && mounted) {
       draft = options;
@@ -49,7 +68,11 @@ class _RecommendationHomeState extends State<RecommendationHome> {
       final options = detailed ? draft : null;
       final games = options == null
           ? await compute(generateRandomGames, count)
-          : await compute(generateConfiguredGames, (options, count));
+          : await compute(generateConfiguredGames, (
+              options,
+              count,
+              List.of(drawStore.draws),
+            ));
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -110,6 +133,16 @@ class _RecommendationHomeState extends State<RecommendationHome> {
               ),
             ),
           const SizedBox(height: 24),
+          Text(drawStore.status),
+          TextButton(
+            onPressed: () async {
+              await launchUrl(
+                Uri.parse('https://www.dhlottery.co.kr/'),
+                mode: LaunchMode.externalApplication,
+              );
+            },
+            child: const Text('출처 : 동행복권'),
+          ),
           Wrap(
             spacing: 8,
             children: [
@@ -167,7 +200,10 @@ class _RecommendationResultsState extends State<RecommendationResults> {
   late RecommendationOptions? options = widget.options;
   Future<void> edit() async {
     final next = await Navigator.of(context).push<RecommendationOptions>(
-      MaterialPageRoute(builder: (_) => SettingsEditor(initial: options)),
+      MaterialPageRoute(
+        builder: (_) =>
+            SettingsEditor(initial: options, draws: drawStore.draws),
+      ),
     );
     if (next != null && mounted) await regenerate(next);
   }
@@ -199,6 +235,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
           : await compute(generateConfiguredGames, (
               configuration,
               games.length,
+              List.of(drawStore.draws),
             ));
       if (mounted) {
         setState(() {

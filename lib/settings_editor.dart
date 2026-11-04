@@ -3,8 +3,9 @@ import 'domain/recommendation.dart';
 
 /// Edits a temporary preset; returning an option does not persist it.
 class SettingsEditor extends StatefulWidget {
-  const SettingsEditor({super.key, this.initial});
+  const SettingsEditor({super.key, this.initial, this.draws = const []});
   final RecommendationOptions? initial;
+  final List<DrawResult> draws;
   @override
   State<SettingsEditor> createState() => _SettingsEditorState();
 }
@@ -13,6 +14,9 @@ class _SettingsEditorState extends State<SettingsEditor> {
   late Set<int> fixed;
   late Set<int> excluded;
   int? odd, low, groups;
+  bool previous = false, previousBonus = true, missingBonus = true;
+  int? missing;
+  int missingRounds = 5;
   List<int>? oneLengths, twoLengths;
   RangeValues sum = const RangeValues(21, 255);
   @override
@@ -27,6 +31,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
     odd = o.oddCount;
     low = o.lowCount;
     groups = o.groupCount;
+    previous = o.excludePrevious;
+    previousBonus = o.previousIncludesBonus;
+    missing = o.missingCount;
+    missingRounds = o.missingRounds;
+    missingBonus = o.missingIncludesBonus;
     oneLengths = o.groupCount == 1 ? o.groupLengths : null;
     twoLengths = o.groupCount == 2 ? o.groupLengths : null;
     sum = RangeValues(o.minSum.toDouble(), o.maxSum.toDouble());
@@ -191,11 +200,46 @@ class _SettingsEditorState extends State<SettingsEditor> {
               }),
             ),
           const SizedBox(height: 24),
-          const ListTile(
-            title: Text('직전 회차 번호 · 미출현 번호'),
-            subtitle: Text('검증된 추첨 데이터 연결 후 사용할 수 있습니다.'),
-            enabled: false,
+          SwitchListTile(
+            title: const Text('직전 회차 번호 제외'),
+            value: previous,
+            onChanged: widget.draws.isEmpty
+                ? null
+                : (v) => setState(() => previous = v),
           ),
+          if (previous)
+            SwitchListTile(
+              title: const Text('보너스 포함 7개 제외'),
+              value: previousBonus,
+              onChanged: (v) => setState(() => previousBonus = v),
+            ),
+          if (widget.draws.length >= 5) ...[
+            DropdownButtonFormField<int>(
+              initialValue: missing ?? 0,
+              decoration: const InputDecoration(labelText: '미출현 번호 포함 수'),
+              items: [
+                const DropdownMenuItem(value: 0, child: Text('사용 안 함')),
+                for (var n = 1; n <= 6; n++)
+                  DropdownMenuItem(value: n, child: Text('$n개')),
+              ],
+              onChanged: (v) => setState(() => missing = v == 0 ? null : v),
+            ),
+            DropdownButtonFormField<int>(
+              initialValue: missingRounds,
+              decoration: const InputDecoration(labelText: '미출현 기준 기간'),
+              items: [
+                for (var n = 1; n <= widget.draws.length && n <= 100; n++)
+                  DropdownMenuItem(value: n, child: Text('최근 $n회')),
+              ],
+              onChanged: (v) => setState(() => missingRounds = v!),
+            ),
+            SwitchListTile(
+              title: const Text('보너스 포함 7개로 출현 판정'),
+              value: missingBonus,
+              onChanged: (v) => setState(() => missingBonus = v),
+            ),
+          ] else
+            const Text('미출현 규칙은 최근 5회 데이터 저장 후 사용할 수 있습니다.'),
           TextButton(
             onPressed: () => setState(() => load(RecommendationOptions())),
             child: const Text('모든 설정 초기화'),
@@ -211,6 +255,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
                 minSum: sum.start.round(),
                 maxSum: sum.end.round(),
                 groupCount: groups,
+                excludePrevious: previous,
+                previousIncludesBonus: previousBonus,
+                missingCount: missing,
+                missingRounds: missingRounds,
+                missingIncludesBonus: missingBonus,
                 groupLengths: groups == 1
                     ? oneLengths
                     : groups == 2
