@@ -1,0 +1,40 @@
+name: Android preview APK
+on:
+  push:
+    branches: [codex/recommendation-foundation]
+    paths: ['lib/**', 'assets/**', 'android/**', 'pubspec.*', 'test/**', '.github/workflows/android-preview.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-preview-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.4'
+          cache: true
+      - uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: easy-lotto-preview-signing-v1
+      - run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build apk --debug --target-platform android-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: easy-lotto-preview-arm64
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
