@@ -13,8 +13,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      EASY_LOTTO_PREVIEW_KEYSTORE: ${{ runner.temp }}/easy-lotto-preview2/debug.keystore
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -28,10 +26,12 @@ jobs:
       - uses: actions/cache/restore@v4
         id: preview-signing
         with:
-          path: ${{ env.EASY_LOTTO_PREVIEW_KEYSTORE }}
+          path: ${{ runner.temp }}/easy-lotto-preview2/debug.keystore
           key: easy-lotto-preview2-signing-v2
       - name: Prepare and verify preview signing key
         shell: bash
+        env:
+          EASY_LOTTO_PREVIEW_KEYSTORE: ${{ runner.temp }}/easy-lotto-preview2/debug.keystore
         run: |
           set -euo pipefail
           expected=$(tr -d '[:space:]' < .github/preview2-signing.sha256)
@@ -57,13 +57,15 @@ jobs:
       - uses: actions/cache/save@v4
         if: steps.preview-signing.outputs.cache-hit != 'true'
         with:
-          path: ${{ env.EASY_LOTTO_PREVIEW_KEYSTORE }}
+          path: ${{ runner.temp }}/easy-lotto-preview2/debug.keystore
           key: easy-lotto-preview2-signing-v2
       - run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
       - run: flutter build apk --debug --target-platform android-arm64
+        env:
+          EASY_LOTTO_PREVIEW_KEYSTORE: ${{ runner.temp }}/easy-lotto-preview2/debug.keystore
       - uses: actions/upload-artifact@v4
         with:
           name: easy-lotto-preview2-arm64
