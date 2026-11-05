@@ -7,6 +7,7 @@ import 'paper_store.dart';
 import 'paper_flow.dart';
 import 'paper_view.dart';
 import 'settings_editor.dart';
+import 'collection_order.dart';
 
 class SavedGame {
   SavedGame(this.game, this.options, {String? source})
@@ -111,8 +112,14 @@ class LibraryStore extends ChangeNotifier {
 final libraryStore = LibraryStore();
 
 class LibraryPage extends StatefulWidget {
-  const LibraryPage({super.key, this.draws = const [], this.onGenerate});
+  const LibraryPage({
+    super.key,
+    this.draws = const [],
+    this.onGenerate,
+    this.generationCount = 1,
+  });
   final List<DrawResult> draws;
+  final int generationCount;
   final Future<void> Function(RecommendationOptions, String?)? onGenerate;
   @override
   State<LibraryPage> createState() => _LibraryPageState();
@@ -132,6 +139,7 @@ class _LibraryPageState extends State<LibraryPage> {
           initial: preset?.options,
           presetId: id,
           draws: draws,
+          generationCount: widget.generationCount,
           onSaved: (p) => id = p.id,
         ),
       ),
@@ -225,6 +233,7 @@ class _LibraryPageState extends State<LibraryPage> {
                             for (final n
                                 in (libraryStore.numbers.toList()..sort()))
                               FilterChip(
+                                showCheckmark: false,
                                 label: Text('$n'),
                                 selected: selectedNumbers.contains(n),
                                 onSelected: (v) => setState(() {
@@ -271,8 +280,11 @@ class _LibraryPageState extends State<LibraryPage> {
                         ),
                   child: const Text('선택 조합으로 복권 용지 만들기'),
                 ),
-                for (final saved in libraryStore.games)
-                  ListTile(
+                CollectionOrder<SavedGame>(
+                  storageKey: 'order.games.v1',
+                  items: libraryStore.games,
+                  id: (g) => g.game.numbers.join(','),
+                  builder: (saved) => ListTile(
                     leading: Checkbox(
                       value: selectedGames.contains(saved.game),
                       onChanged: (v) => setState(() {
@@ -290,7 +302,7 @@ class _LibraryPageState extends State<LibraryPage> {
                           ? '직접 입력'
                           : saved.options == null
                           ? '완전 랜덤'
-                          : '상세 설정',
+                          : '상세 규칙',
                     ),
                     trailing: IconButton(
                       tooltip: '조합 삭제',
@@ -328,6 +340,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       },
                     ),
                   ),
+                ),
               ],
             ),
             ListView(
@@ -341,8 +354,12 @@ class _LibraryPageState extends State<LibraryPage> {
                   ),
                   child: const Text('새 복권 용지'),
                 ),
-                for (final p in paperStore.items)
-                  Card(
+                CollectionOrder<LotteryPaper>(
+                  storageKey: 'order.papers.v1',
+                  items: paperStore.items,
+                  id: (p) => p.id,
+                  name: (p) => p.title,
+                  builder: (p) => Card(
                     child: Column(
                       children: [
                         ListTile(
@@ -384,13 +401,18 @@ class _LibraryPageState extends State<LibraryPage> {
                       ],
                     ),
                   ),
+                ),
               ],
             ),
             ListView(
               children: [
                 TextButton(onPressed: editPreset, child: const Text('새 설정')),
-                for (final p in presetStore.items)
-                  ListTile(
+                CollectionOrder<Preset>(
+                  storageKey: 'order.presets.v1',
+                  items: presetStore.items,
+                  id: (p) => p.id,
+                  name: (p) => p.name,
+                  builder: (p) => ListTile(
                     title: Text(p.name),
                     onTap: () => editPreset(p),
                     trailing: PopupMenuButton<String>(
@@ -411,6 +433,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       ],
                     ),
                   ),
+                ),
               ],
             ),
           ],

@@ -39,12 +39,20 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
   Future<void> initialize() async {
     try {
       final preferences = await DisplayPreferences.load();
+      final prefs = await LocalStorage.getInstance();
       if (!mounted) return;
       setState(() {
         design = preferences.resolve(paper.id, random);
+        keepOn = prefs.getBool('keepScreenOn.v1') ?? false;
         ready = true;
       });
-      final prefs = await LocalStorage.getInstance();
+      await wake(
+        keepOn &&
+            !covered &&
+            (WidgetsBinding.instance.lifecycleState == null ||
+                WidgetsBinding.instance.lifecycleState ==
+                    AppLifecycleState.resumed),
+      );
       if (!mounted || prefs.getBool('largeViewIntro.v1') == true) return;
       final confirmed = await showDialog<bool>(
         context: context,
@@ -169,7 +177,20 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
                 SwitchListTile(
                   title: const Text('화면 계속 켜기'),
                   value: keepOn,
-                  onChanged: (v) {
+                  onChanged: (v) async {
+                    try {
+                      await (await LocalStorage.getInstance()).setBool(
+                        'keepScreenOn.v1',
+                        v,
+                      );
+                    } catch (_) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('화면 켜기 설정을 저장하지 못했습니다.')),
+                      );
+                      return;
+                    }
+                    if (!context.mounted) return;
                     setState(() => keepOn = v);
                     wake(v);
                   },
@@ -235,12 +256,17 @@ class GameDisplay extends StatelessWidget {
                     design == PaperDesign.cards ? 6 : 30,
                   ),
                 ),
-                child: Text(
-                  '$n',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                child: Center(
+                  widthFactor: 1,
+                  heightFactor: 1,
+                  child: Text(
+                    '$n',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
                 ),
               ),
@@ -355,7 +381,9 @@ class _DesignSettingsState extends State<DesignSettings> {
               DropdownButtonFormField<PaperDesign>(
                 key: ValueKey('base-$base'),
                 initialValue: base,
-                decoration: const InputDecoration(labelText: '기본 디자인'),
+                decoration: const InputDecoration(
+                  labelText: '기본 디자인 · 모든 용지 공통',
+                ),
                 items: [
                   for (final s in PaperDesign.values)
                     DropdownMenuItem(
@@ -363,14 +391,17 @@ class _DesignSettingsState extends State<DesignSettings> {
                       child: Text(designNames[s.index]),
                     ),
                 ],
-                onChanged: saving || mode == DesignMode.random
+                onChanged: saving || mode != DesignMode.basic
                     ? null
                     : (v) => setState(() => base = v!),
               ),
               DropdownButtonFormField<int>(
                 key: ValueKey('override-$paperDesign'),
                 initialValue: paperDesign?.index ?? -1,
-                decoration: const InputDecoration(labelText: '이 용지의 디자인'),
+                decoration: InputDecoration(
+                  labelText: '이 용지의 디자인',
+                  helperText: '이 용지에만 적용됩니다. 개별 지정이 없는 용지는 기본 디자인을 사용합니다.',
+                ),
                 items: [
                   const DropdownMenuItem(value: -1, child: Text('기본 디자인 사용')),
                   for (final s in PaperDesign.values)

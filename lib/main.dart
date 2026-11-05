@@ -8,6 +8,7 @@ import 'paper_store.dart';
 import 'paper_flow.dart';
 import 'exit_guard.dart';
 import 'draw_store.dart';
+import 'local_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 final drawStore = DrawStore();
@@ -134,6 +135,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
           draws: drawStore.draws,
           presetId: preset?.id,
           onSaved: (saved) => preset = saved,
+          generationCount: count,
         ),
       ),
     );
@@ -214,6 +216,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
     body: tab == 1
         ? LibraryPage(
             draws: drawStore.draws,
+            generationCount: count,
             onGenerate: (options, id) async {
               setState(() {
                 tab = 0;
@@ -230,8 +233,12 @@ class _RecommendationHomeState extends State<RecommendationHome> {
               padding: const EdgeInsets.all(24),
               children: [
                 const Text('더보기', style: TextStyle(fontSize: 24)),
-                Text(drawStore.status),
-                TextButton(
+                Text(
+                  drawStore.draws.isEmpty
+                      ? drawStore.status
+                      : '${drawStore.draws.first.round}회 기준',
+                ),
+                OutlinedButton(
                   onPressed: () => launchUrl(
                     Uri.parse('https://www.dhlottery.co.kr/'),
                     mode: LaunchMode.externalApplication,
@@ -239,16 +246,38 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                   child: const Text('출처 : 동행복권'),
                 ),
                 const ListTile(
-                  title: Text('번호 추천 방식 안내'),
+                  title: Text('로또 번호 추천 안내'),
                   subtitle: Text(
-                    '추첨은 매회 독립적으로 이루어지며, 추천 조건과 과거 결과는 당첨을 예측하거나 보장하지 않습니다.',
+                    '본 앱은 다양한 번호 선택 조건을 활용할 수 있는 편의를 제공하지만, 이러한 조건들과 과거의 추첨 결과 등은 당첨을 예측하거나 보장하지 않음을 유의하여 주시기 바랍니다.',
                   ),
                 ),
                 const ListTile(
                   title: Text('저장 안내'),
                   subtitle: Text(
-                    '번호와 설정은 이 기기에 저장됩니다. 앱 삭제 시 데이터가 사라질 수 있습니다.',
+                    '저장한 번호 및 설정 등은 앱 내부 저장소에 저장됩니다. 앱 삭제 시 데이터가 사라짐에 유의하여 주십시오. 추후 내보내기 및 가져오기, 클라우드 연동·동기화 기능을 업데이트할 예정입니다.',
                   ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    try {
+                      await (await LocalStorage.getInstance()).setBool(
+                        'resultLossNotice.v1',
+                        false,
+                      );
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('결과 이탈 안내를 다시 표시합니다.')),
+                        );
+                      }
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('안내 설정을 변경하지 못했습니다.')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('결과 이탈 안내 다시 켜기'),
                 ),
               ],
             ),
@@ -309,7 +338,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                           : (_) => setState(() => detailed = false),
                     ),
                     ChoiceChip(
-                      label: const Text('상세 설정'),
+                      label: const Text('상세 규칙'),
                       selected: detailed,
                       onSelected: busy
                           ? null
@@ -392,6 +421,8 @@ class RecommendationResults extends StatefulWidget {
 }
 
 class _RecommendationResultsState extends State<RecommendationResults> {
+  late final selectedGames = widget.initialGames.toSet();
+  final savedFromResults = <LottoGame>{};
   Future<void> otherSettings() async {
     final id = await showModalBottomSheet<String>(
       context: context,
@@ -442,6 +473,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
           initial: options,
           draws: drawStore.draws,
           presetId: presetId,
+          generationCount: games.length,
           onSaved: (saved) {
             if (mounted) setState(() => presetId = saved.id);
           },
@@ -457,26 +489,13 @@ class _RecommendationResultsState extends State<RecommendationResults> {
   ]) async {
     final confirmed =
         !unsavedResults ||
-        await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('새 번호를 생성하시겠습니까?'),
-                content: const Text(
-                  '새 번호를 생성하면 저장하지 않은 현재 결과는 사라집니다. 저장할 번호가 있다면 결과로 돌아가 저장한 후 다시 시도하십시오.',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('기존 결과로 돌아가기'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('새 번호 생성'),
-                  ),
-                ],
-              ),
-            ) ==
-            true;
+        await confirmResultLoss(
+          context,
+          message:
+              '새 번호를 생성하면 저장하지 않은 현재 결과는 사라집니다. 저장할 번호가 있다면 결과로 돌아가 저장한 후 다시 시도하십시오.',
+          stay: '기존 결과로 돌아가기',
+          leave: '새 번호 생성',
+        );
     if (!confirmed || !mounted) return;
     setState(() => busy = true);
     try {
@@ -491,6 +510,10 @@ class _RecommendationResultsState extends State<RecommendationResults> {
       if (mounted) {
         setState(() {
           games = next;
+          savedFromResults.clear();
+          selectedGames
+            ..clear()
+            ..addAll(next);
           options = configuration;
           if (replacementId != null) presetId = replacementId;
         });
@@ -514,10 +537,11 @@ class _RecommendationResultsState extends State<RecommendationResults> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: libraryStore,
+    listenable: Listenable.merge([libraryStore, paperStore]),
     builder: (context, _) => ExitGuard(
       needsConfirmation: unsavedResults || temporary,
       stay: '결과로 돌아가기',
+      suppressionKey: temporary ? null : 'resultLossNotice.v1',
       message: unsavedResults
           ? '이 화면을 나가면 저장하지 않은 결과${temporary ? '와 임시 설정은' : '는'} 사라집니다. 저장하고 싶은 번호가 있다면 결과로 돌아가 저장 후 이동해 주세요.'
           : '현재 설정이 저장되지 않았습니다. 이 화면을 나가면 임시 설정은 사라집니다.',
@@ -554,7 +578,27 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('게임 ${i + 1}'),
+                        Row(
+                          children: [
+                            Expanded(child: Text('게임 ${i + 1}')),
+                            if (savedFromResults.contains(games[i]))
+                              const Text('저장됨')
+                            else if (games.length > 1)
+                              Checkbox(
+                                key: ValueKey('select-game-$i'),
+                                value: selectedGames.contains(games[i]),
+                                onChanged: busy
+                                    ? null
+                                    : (v) => setState(() {
+                                        if (v == true) {
+                                          selectedGames.add(games[i]);
+                                        } else {
+                                          selectedGames.remove(games[i]);
+                                        }
+                                      }),
+                              ),
+                          ],
+                        ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -601,17 +645,30 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                 child: Text(busy ? '생성 중입니다' : '다시 생성'),
               ),
               FilledButton(
-                onPressed: busy
+                onPressed: busy || selectedGames.isEmpty
                     ? null
                     : () async {
-                        final saved = await saveResultsToPaper(
-                          context,
-                          games,
-                          drawStore.draws,
-                        );
-                        if (mounted && saved) setState(() {});
+                        setState(() => busy = true);
+                        final selection = games
+                            .where(selectedGames.contains)
+                            .toList();
+                        try {
+                          final saved = await saveResultsToPaper(
+                            context,
+                            selection,
+                            drawStore.draws,
+                          );
+                          if (mounted && saved) {
+                            setState(() {
+                              savedFromResults.addAll(selection);
+                              selectedGames.removeAll(selection);
+                            });
+                          }
+                        } finally {
+                          if (mounted) setState(() => busy = false);
+                        }
                       },
-                child: const Text('복권 용지에 저장'),
+                child: const Text('선택한 게임 복권 용지에 저장'),
               ),
             ],
           ),

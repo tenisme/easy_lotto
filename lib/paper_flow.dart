@@ -7,73 +7,33 @@ import 'settings_editor.dart';
 import 'exit_guard.dart';
 import 'preset_store.dart';
 
-Future<List<LottoGame>?> selectGames(
-  BuildContext context,
-  List<LottoGame> games,
-) async {
-  final selected = games.toSet();
-  return showDialog<List<LottoGame>>(
-    context: context,
-    builder: (context) => StatefulBuilder(
-      builder: (context, update) => AlertDialog(
-        title: const Text('용지에 담을 게임 선택'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final g in games)
-                CheckboxListTile(
-                  title: Text(g.numbers.join(' · ')),
-                  value: selected.contains(g),
-                  onChanged: (v) => update(() {
-                    if (v == true) {
-                      selected.add(g);
-                    } else {
-                      selected.remove(g);
-                    }
-                  }),
-                ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: selected.isEmpty || selected.length > 5
-                ? null
-                : () => Navigator.pop(
-                    context,
-                    games.where(selected.contains).toList(),
-                  ),
-            child: const Text('다음'),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
 Future<bool> saveResultsToPaper(
   BuildContext context,
   List<LottoGame> games,
   List<DrawResult> draws,
 ) async {
-  final selected = await selectGames(context, games);
-  if (selected == null || !context.mounted) return false;
+  final selected = List<LottoGame>.of(games);
+  if (selected.isEmpty || selected.length > 5) return false;
   final target = await showModalBottomSheet<String>(
     context: context,
     builder: (context) => SafeArea(
       child: ListView(
         shrinkWrap: true,
         children: [
+          const ListTile(
+            title: Text('복권 용지 선택'),
+            trailing: Tooltip(
+              triggerMode: TooltipTriggerMode.tap,
+              message:
+                  '기존 복권 용지에 남는 자리가 없는 경우, 선택한 게임 수를 줄이거나 새 복권 용지를 만들어 주십시오.',
+              child: Icon(Icons.help_outline),
+            ),
+          ),
           ListTile(
-            title: const Text('새 복권 용지'),
+            title: const Text('새 복권 용지 만들기'),
             onTap: () => Navigator.pop(context, 'new'),
           ),
-          for (final p in paperStore.items)
+          for (final p in paperStore.items.where((p) => p.games.length < 5))
             ListTile(
               title: Text(p.title),
               subtitle: Text('${p.games.length}/5게임'),
@@ -82,10 +42,6 @@ Future<bool> saveResultsToPaper(
                   ? null
                   : () => Navigator.pop(context, p.id),
             ),
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('빈 칸이 부족한 용지는 선택할 수 없습니다. 게임 수를 줄이거나 새 용지를 만드십시오.'),
-          ),
         ],
       ),
     ),
@@ -99,6 +55,7 @@ Future<bool> saveResultsToPaper(
             paper: existing,
             initialGames: [...?existing?.games, ...selected],
             draws: draws,
+            fromResults: true,
           ),
         ),
       ) ==
@@ -111,10 +68,12 @@ class PaperEditor extends StatefulWidget {
     this.paper,
     this.initialGames,
     this.draws = const [],
+    this.fromResults = false,
   });
   final LotteryPaper? paper;
   final List<LottoGame>? initialGames;
   final List<DrawResult> draws;
+  final bool fromResults;
   @override
   State<PaperEditor> createState() => _PaperEditorState();
 }
@@ -161,6 +120,12 @@ class _PaperEditorState extends State<PaperEditor> {
     );
     if (chosen == null || !mounted) return;
     if (replace != null) {
+      if (games[replace] == chosen) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('현재 게임과 같은 번호 조합으로는 교체할 수 없습니다.')),
+        );
+        return;
+      }
       final yes = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -233,10 +198,11 @@ class _PaperEditorState extends State<PaperEditor> {
                   ),
                   Wrap(
                     children: [
-                      TextButton(
-                        onPressed: busy ? null : () => add(replace: i),
-                        child: const Text('교체'),
-                      ),
+                      if (!widget.fromResults)
+                        TextButton(
+                          onPressed: busy ? null : () => add(replace: i),
+                          child: const Text('교체'),
+                        ),
                       IconButton(
                         tooltip: '위로 이동',
                         onPressed: busy || i == 0
@@ -247,25 +213,26 @@ class _PaperEditorState extends State<PaperEditor> {
                               }),
                         icon: const Icon(Icons.arrow_upward),
                       ),
-                      TextButton(
-                        onPressed: busy
-                            ? null
-                            : () => setState(() => games.removeAt(i)),
-                        child: const Text('제거'),
-                      ),
+                      if (!widget.fromResults)
+                        TextButton(
+                          onPressed: busy
+                              ? null
+                              : () => setState(() => games.removeAt(i)),
+                          child: const Text('제거'),
+                        ),
                     ],
                   ),
                 ],
               ),
             ),
-          if (games.length < 5)
+          if (games.length < 5 && !widget.fromResults)
             OutlinedButton(
               onPressed: busy ? null : add,
               child: const Text('조합 추가'),
             ),
           FilledButton(
             onPressed: busy || games.isEmpty ? null : save,
-            child: const Text('용지 저장'),
+            child: const Text('복권 용지 저장'),
           ),
         ],
       ),
@@ -305,17 +272,27 @@ class _GameComposerState extends State<GameComposer> {
     final next = await Navigator.push<RecommendationOptions>(
       context,
       MaterialPageRoute(
-        builder: (_) => SettingsEditor(initial: options, draws: widget.draws),
+        builder: (_) => SettingsEditor(
+          initial: options,
+          draws: widget.draws,
+          completeOnly: true,
+        ),
       ),
     );
-    if (mounted && next != null) setState(() => options = next);
+    if (mounted && next != null) {
+      setState(() => options = next);
+      await generate();
+    }
   }
 
   Future<void> generate() async {
     if (mode == 3 && options == null) {
       options = await Navigator.push<RecommendationOptions>(
         context,
-        MaterialPageRoute(builder: (_) => SettingsEditor(draws: widget.draws)),
+        MaterialPageRoute(
+          builder: (_) =>
+              SettingsEditor(draws: widget.draws, completeOnly: true),
+        ),
       );
       if (!mounted || options == null) return;
     }
@@ -361,34 +338,41 @@ class _GameComposerState extends State<GameComposer> {
           children: [
             for (var m = 0; m < 4; m++)
               ChoiceChip(
-                label: Text(['직접 선택', '내 번호', '완전 랜덤', '상세 설정'][m]),
+                label: Text(['직접 선택', '내 번호', '완전 랜덤', '상세 규칙'][m]),
                 selected: mode == m,
-                onSelected: busy ? null : (_) => setState(() => mode = m),
+                onSelected: busy
+                    ? null
+                    : (_) async {
+                        setState(() => mode = m);
+                        if (m == 2) await generate();
+                      },
               ),
           ],
         ),
-        if (mode < 2)
-          Wrap(
-            spacing: 4,
-            children: [
-              for (var n = 1; n <= 45; n++)
-                if (mode == 0 || libraryStore.numbers.contains(n))
-                  FilterChip(
-                    label: Text('$n'),
-                    selected: selected.contains(n),
-                    onSelected:
-                        busy || (!selected.contains(n) && selected.length == 6)
-                        ? null
-                        : (v) => setState(() {
-                            if (v) {
-                              selected.add(n);
-                            } else {
-                              selected.remove(n);
-                            }
-                          }),
-                  ),
-            ],
-          ),
+        Wrap(
+          spacing: 4,
+          children: [
+            for (var n = 1; n <= 45; n++)
+              if (mode != 1 || libraryStore.numbers.contains(n))
+                FilterChip(
+                  showCheckmark: false,
+                  label: Text('$n'),
+                  selected: selected.contains(n),
+                  onSelected:
+                      busy ||
+                          mode >= 2 ||
+                          (!selected.contains(n) && selected.length == 6)
+                      ? null
+                      : (v) => setState(() {
+                          if (v) {
+                            selected.add(n);
+                          } else {
+                            selected.remove(n);
+                          }
+                        }),
+                ),
+          ],
+        ),
         if (mode == 1) const Text('부족한 번호는 직접 선택에서 채울 수 있습니다.'),
         if (mode == 3) ...[
           if (presetStore.items.isNotEmpty)
@@ -400,20 +384,22 @@ class _GameComposerState extends State<GameComposer> {
               ],
               onChanged: busy
                   ? null
-                  : (id) =>
-                        setState(() => options = presetStore.find(id)?.options),
+                  : (id) async {
+                      setState(() => options = presetStore.find(id)?.options);
+                      await generate();
+                    },
             ),
           TextButton(
             onPressed: busy ? null : editOptions,
             child: const Text('설정 수정'),
           ),
         ],
+        Text('선택한 조합: ${(selected.toList()..sort()).join(' · ')}'),
         if (mode >= 2)
           OutlinedButton(
             onPressed: busy ? null : generate,
-            child: Text(selected.isEmpty ? '번호 생성' : '다시 생성'),
+            child: const Text('다시 생성'),
           ),
-        Text('선택한 조합: ${(selected.toList()..sort()).join(' · ')}'),
         FilledButton(
           onPressed: busy || selected.length != 6
               ? null

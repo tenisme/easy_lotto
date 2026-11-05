@@ -21,7 +21,7 @@ void main() {
     expect(find.text('저장한 설정'), findsOneWidget);
     await tester.tap(find.widgetWithText(NavigationDestination, '더보기'));
     await tester.pumpAndSettle();
-    expect(find.text('번호 추천 방식 안내'), findsOneWidget);
+    expect(find.text('로또 번호 추천 안내'), findsOneWidget);
     await tester.tap(find.widgetWithText(NavigationDestination, '추천'));
     await tester.pumpAndSettle();
     expect(find.text('몇 게임을 만들까요?'), findsOneWidget);
@@ -46,7 +46,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('다른'));
     await tester.pumpAndSettle();
-    expect(find.text('새 번호를 생성하시겠습니까?'), findsOneWidget);
+    expect(
+      find.text(
+        '새 번호를 생성하면 저장하지 않은 현재 결과는 사라집니다. 저장할 번호가 있다면 결과로 돌아가 저장한 후 다시 시도하십시오.',
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.text('기존 결과로 돌아가기'));
     await tester.pumpAndSettle();
     expect(find.text('기존 · 1게임'), findsOneWidget);
@@ -168,7 +173,10 @@ void main() {
       await tester.ensureVisible(find.text('1묶음'));
       await tester.tap(find.text('1묶음'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('번호 생성'));
+      await tester.runAsync(() async {
+        await tester.tap(find.text('번호 생성'));
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+      });
       await tester.pumpAndSettle();
       expect(result?.groupCount, 1);
       expect(find.byType(AlertDialog), findsNothing);
@@ -178,7 +186,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MainApp());
-    await tester.tap(find.text('상세 설정'));
+    await tester.tap(find.text('상세 규칙'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('설정 만들기'));
     await tester.pumpAndSettle();
@@ -198,7 +206,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MainApp());
-    await tester.tap(find.text('상세 설정'));
+    await tester.tap(find.text('상세 규칙'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('설정 만들기'));
     await tester.pumpAndSettle();
@@ -249,7 +257,12 @@ void main() {
     );
     await tester.tap(find.text('다시 생성'));
     await tester.pumpAndSettle();
-    expect(find.text('새 번호를 생성하시겠습니까?'), findsOneWidget);
+    expect(
+      find.text(
+        '새 번호를 생성하면 저장하지 않은 현재 결과는 사라집니다. 저장할 번호가 있다면 결과로 돌아가 저장한 후 다시 시도하십시오.',
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.text('기존 결과로 돌아가기'));
     await tester.pumpAndSettle();
     expect(find.text('6'), findsOneWidget);

@@ -6,6 +6,7 @@ import 'package:easy_lotto/paper_store.dart';
 import 'package:easy_lotto/paper_flow.dart';
 import 'package:easy_lotto/library.dart';
 import 'package:easy_lotto/local_storage.dart';
+import 'package:easy_lotto/main.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -51,42 +52,35 @@ void main() {
   testWidgets('result selection defaults to all and cannot continue empty', (
     tester,
   ) async {
-    List<LottoGame>? result;
     await tester.pumpWidget(
-      MaterialApp(
-        home: Builder(
-          builder: (context) => TextButton(
-            onPressed: () async {
-              result = await selectGames(context, [a, b]);
-            },
-            child: const Text('open'),
-          ),
-        ),
-      ),
+      MaterialApp(home: RecommendationResults(initialGames: [a, b])),
     );
-    await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     expect(
       tester
-          .widgetList<CheckboxListTile>(find.byType(CheckboxListTile))
+          .widgetList<Checkbox>(find.byType(Checkbox))
           .every((c) => c.value == true),
       isTrue,
     );
-    await tester.tap(find.text(a.numbers.join(' · ')));
+    await tester.tap(find.byKey(const ValueKey('select-game-0')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(b.numbers.join(' · ')));
+    await tester.tap(find.byKey(const ValueKey('select-game-1')));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('선택한 게임 복권 용지에 저장'), 200);
     expect(
       tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, '다음'))
+          .widget<FilledButton>(
+            find.widgetWithText(FilledButton, '선택한 게임 복권 용지에 저장'),
+          )
           .onPressed,
       isNull,
     );
-    await tester.tap(find.text(b.numbers.join(' · ')));
+    await tester.tap(find.byKey(const ValueKey('select-game-1')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('다음'));
+    await tester.tap(find.text('선택한 게임 복권 용지에 저장'));
     await tester.pumpAndSettle();
-    expect(result, [b]);
+    expect(find.text('복권 용지 선택'), findsOneWidget);
+    expect(find.text('용지에 담을 게임 선택'), findsNothing);
   });
   testWidgets('paper editor reorders games before committing', (tester) async {
     await tester.pumpWidget(
@@ -94,8 +88,8 @@ void main() {
     );
     await tester.tap(find.byTooltip('위로 이동').last);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('용지 저장'));
-    await tester.tap(find.text('용지 저장'));
+    await tester.ensureVisible(find.text('복권 용지 저장'));
+    await tester.tap(find.text('복권 용지 저장'));
     await tester.pumpAndSettle();
     expect(paperStore.items.single.games, [b, a]);
   });
@@ -119,7 +113,7 @@ void main() {
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('용지 저장'));
+    await tester.tap(find.text('복권 용지 저장'));
     await tester.pumpAndSettle();
     expect(paperStore.items.single.games, [a]);
     expect(libraryStore.games, isEmpty);

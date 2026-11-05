@@ -98,8 +98,7 @@ class RecommendationEngine {
         (o.missingCount != null &&
             (o.missingCount! < 1 ||
                 o.missingCount! > 6 ||
-                o.missingRounds < 1 ||
-                o.missingRounds > 100))) {
+                o.missingRounds < 1))) {
       fail('invalid_input', '옵션의 입력 범위를 확인하십시오.');
     }
     final lengths = o.groupLengths;

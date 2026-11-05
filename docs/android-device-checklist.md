@@ -4,6 +4,8 @@
 
 ## 이번 테스트 빌드
 
+아래 빌드는 **1차 테스트 APK**이다. 1차 피드백의 확정 변경과 2차 확인 항목은 [first-device-review.md](first-device-review.md)를 따른다. 2차 APK는 아직 생성하지 않았다.
+
 - 소스 커밋: `feb42de`
 - 버전: `0.1.0-preview` (versionCode 1)
 - [GitHub 빌드·다운로드](https://github.com/tenisme/easy_lotto/actions/runs/41895462064)
