@@ -2,9 +2,22 @@
 
 대상: ARM64 Android 7.0(API 24) 이상 기기. 테스트 APK는 디버그 서명이며 정식 스토어 배포용이 아니다.
 
-## 이번 테스트 빌드
+## 2차 테스트 빌드
 
-아래 빌드는 **1차 테스트 APK**이다. 1차 피드백의 확정 변경과 2차 확인 항목은 [first-device-review.md](first-device-review.md)를 따른다. 2차 APK는 아직 생성하지 않았다.
+**배포 보류: 아래 APK는 1차 APK와 서명이 달라 기존 앱 위에 업데이트 설치할 수 없다. 기존 앱을 삭제하지 않는다. 별도 패키지 병행 설치 또는 데이터 보존 대책을 사용자와 결정한 뒤 배포한다.**
+
+- 소스 커밋: `5a2181c`
+- 버전: `0.1.1-preview` (versionCode 2)
+- [GitHub 빌드·다운로드](https://github.com/tenisme/easy_lotto/actions/runs/41974397038)
+- 1차 수정 사항 및 이번 확인 범위: [first-device-review.md](first-device-review.md).
+- 정적 분석·56개 테스트·APK 빌드·v2 서명 및 16KiB 정렬 검증은 통과했다. APK SHA-256: `ca24406c302f224d09a8cad058add2f21b8676306ae20194f11e14cae612f1a9`.
+- 1차 서명 인증서 SHA-256: `9a89baeeca3f08ee914ce02a1fef90afce147d9d94e949b7a00fae1e5e966a41`.
+- 이번 인증서 SHA-256: `10721f082e39eb6946435f81604283f4136d61c4a3c0959f43440bd2af054bad`.
+- 빌드 캐시에는 현재 이전 서명 키가 없다. 이번 빌드도 `~/.android/debug.keystore` 경로가 존재하지 않아 캐시 저장이 생략되었다. 다음 배포 전 명시적인 서명 경로와 키 보존·검증을 구성해야 한다.
+
+## 1차 테스트 빌드 기록
+
+아래 빌드는 **1차 테스트 APK**이며 1차 피드백의 수정 사항은 포함되어 있지 않다.
 
 - 소스 커밋: `feb42de`
 - 버전: `0.1.0-preview` (versionCode 1)
