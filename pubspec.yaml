@@ -1,7 +1,7 @@
 name: easy_lotto
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.2+3
+version: 0.1.3+4
 
 environment:
   sdk: ^3.11.1
@@ -25,6 +25,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/draws.json
+    - assets/test_ads/
 
 # Desktop tests use the OS SQLite library instead of downloading a binary.
 hooks:

@@ -89,6 +89,7 @@ void main() {
     await tester.tap(find.byTooltip('위로 이동').last);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('복권 용지 저장'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('복권 용지 저장'));
     await tester.pumpAndSettle();
     expect(paperStore.items.single.games, [b, a]);

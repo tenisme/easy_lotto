@@ -9,7 +9,9 @@ import 'paper_flow.dart';
 import 'exit_guard.dart';
 import 'draw_store.dart';
 import 'local_storage.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'app_theme.dart';
+import 'banner_scaffold.dart';
+import 'draw_source.dart';
 
 final drawStore = DrawStore();
 
@@ -17,13 +19,49 @@ void main() {
   runApp(const MainApp());
 }
 
-class MainApp extends StatelessWidget {
+class MainApp extends StatefulWidget {
   const MainApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(home: RecommendationHome());
+  State<MainApp> createState() => _MainAppState();
+}
+
+class _MainAppState extends State<MainApp> {
+  final theme = AppThemeController();
+  @override
+  void initState() {
+    super.initState();
+    theme.load();
   }
+
+  @override
+  void dispose() {
+    theme.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AppThemeScope(
+    controller: theme,
+    child: ListenableBuilder(
+      listenable: theme,
+      builder: (context, _) => MaterialApp(
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff386b56)),
+          useMaterial3: true,
+        ),
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xff386b56),
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+        ),
+        themeMode: theme.mode,
+        home: const RecommendationHome(),
+      ),
+    ),
+  );
 }
 
 List<LottoGame> generateRandomGames(int count) =>
@@ -188,7 +226,8 @@ class _RecommendationHomeState extends State<RecommendationHome> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => BannerScaffold(
+    showBanner: tab != 1,
     appBar: tab != 0
         ? null
         : AppBar(
@@ -233,18 +272,11 @@ class _RecommendationHomeState extends State<RecommendationHome> {
               padding: const EdgeInsets.all(24),
               children: [
                 const Text('더보기', style: TextStyle(fontSize: 24)),
-                Text(
-                  drawStore.draws.isEmpty
-                      ? drawStore.status
-                      : '${drawStore.draws.first.round}회 기준',
+                DrawSource(
+                  round: drawStore.draws.firstOrNull?.round,
+                  status: drawStore.status,
                 ),
-                OutlinedButton(
-                  onPressed: () => launchUrl(
-                    Uri.parse('https://www.dhlottery.co.kr/'),
-                    mode: LaunchMode.externalApplication,
-                  ),
-                  child: const Text('출처 : 동행복권'),
-                ),
+                const AppThemePicker(),
                 const ListTile(
                   title: Text('로또 번호 추천 안내'),
                   subtitle: Text(
@@ -317,15 +349,9 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                     ),
                   ),
                 const SizedBox(height: 24),
-                Text(drawStore.status),
-                TextButton(
-                  onPressed: () async {
-                    await launchUrl(
-                      Uri.parse('https://www.dhlottery.co.kr/'),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  },
-                  child: const Text('출처 : 동행복권'),
+                DrawSource(
+                  round: drawStore.draws.firstOrNull?.round,
+                  status: drawStore.status,
                 ),
                 Wrap(
                   spacing: 8,
@@ -545,7 +571,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
       message: unsavedResults
           ? '이 화면을 나가면 저장하지 않은 결과${temporary ? '와 임시 설정은' : '는'} 사라집니다. 저장하고 싶은 번호가 있다면 결과로 돌아가 저장 후 이동해 주세요.'
           : '현재 설정이 저장되지 않았습니다. 이 화면을 나가면 임시 설정은 사라집니다.',
-      child: Scaffold(
+      child: BannerScaffold(
         appBar: AppBar(title: const Text('추천 결과')),
         body: SafeArea(
           child: ListView(

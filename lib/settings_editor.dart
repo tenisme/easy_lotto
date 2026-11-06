@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'banner_scaffold.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'local_storage.dart';
@@ -436,7 +437,7 @@ class _SettingsEditorState extends State<SettingsEditor> {
           RecommendationOptions(),
     ),
     message: '저장하지 않은 설정 변경 사항이 있습니다. 저장하지 않고 이동하시겠습니까?',
-    child: Scaffold(
+    child: BannerScaffold(
       appBar: AppBar(
         title: const Text('상세 규칙'),
         actions: [

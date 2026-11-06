@@ -48,7 +48,8 @@ Future<bool> confirmResultLoss(
       ),
     ),
   );
-  if (yes == true && suppress && suppressionKey != null) {
+  // Suppression is independent of whether the user stays, leaves or dismisses.
+  if (suppress && suppressionKey != null) {
     try {
       await (await LocalStorage.getInstance()).setBool(suppressionKey, true);
     } catch (_) {

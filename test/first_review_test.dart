@@ -57,6 +57,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('1묶음'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('1묶음'));
     await tester.tap(find.text('설정 완료'));
     await tester.pumpAndSettle();
@@ -155,8 +156,8 @@ void main() {
           )
           .onChanged!(PaperDesign.basic.index);
       await tester.pump();
-      await tester.scrollUntilVisible(find.text('저장'), 200);
-      await tester.tap(find.text('저장'));
+      await tester.scrollUntilVisible(find.text('변경 완료'), 200);
+      await tester.tap(find.text('변경 완료'));
       await tester.pumpAndSettle();
       final prefs = await DisplayPreferences.load();
       expect(prefs.resolve('a', Random()), PaperDesign.cards);
@@ -231,6 +232,7 @@ void main() {
       ),
     );
     await tester.ensureVisible(find.text('1묶음'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('1묶음'));
     await tester.tap(find.text('설정 저장'));
     await tester.pumpAndSettle();

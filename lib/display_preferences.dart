@@ -13,16 +13,27 @@ class DisplayPreferences {
     this.mode = DesignMode.basic,
     this.defaultDesign = PaperDesign.basic,
     Map<String, PaperDesign> overrides = const {},
-  }) : overrides = Map.unmodifiable(overrides);
+    Set<String> randomPapers = const {},
+    this.beforeRandomMode = DesignMode.basic,
+  }) : overrides = Map.unmodifiable(overrides),
+       randomPapers = Set.unmodifiable(randomPapers);
   final DesignMode mode;
   final PaperDesign defaultDesign;
   final Map<String, PaperDesign> overrides;
-  PaperDesign resolve(String paperId, Random random) => switch (mode) {
-    DesignMode.basic => defaultDesign,
-    DesignMode.perPaper => overrides[paperId] ?? defaultDesign,
-    DesignMode.random =>
-      PaperDesign.values[random.nextInt(PaperDesign.values.length)],
-  };
+  final Set<String> randomPapers;
+  final DesignMode beforeRandomMode;
+  PaperDesign resolve(String paperId, Random random) {
+    if (mode == DesignMode.random || randomPapers.contains(paperId)) {
+      return PaperDesign.values[random.nextInt(PaperDesign.values.length)];
+    }
+    return switch (mode) {
+      DesignMode.basic => defaultDesign,
+      DesignMode.perPaper => overrides[paperId] ?? defaultDesign,
+      DesignMode.random =>
+        PaperDesign.values[random.nextInt(PaperDesign.values.length)],
+    };
+  }
+
   static Future<DisplayPreferences> load() async {
     final raw = (await LocalStorage.getInstance()).getString('display.v1');
     if (raw == null) return DisplayPreferences();
@@ -33,6 +44,15 @@ class DisplayPreferences {
       overrides: (j['overrides'] as Map<String, dynamic>).map(
         (k, v) => MapEntry(k, PaperDesign.values.byName(v as String)),
       ),
+      randomPapers: ((j['randomPapers'] as List?) ?? []).cast<String>().toSet(),
+      beforeRandomMode:
+          DesignMode.values
+              .where(
+                (m) =>
+                    m != DesignMode.random && m.name == j['beforeRandomMode'],
+              )
+              .firstOrNull ??
+          DesignMode.basic,
     );
   }
 
@@ -43,6 +63,8 @@ class DisplayPreferences {
         'mode': mode.name,
         'default': defaultDesign.name,
         'overrides': overrides.map((k, v) => MapEntry(k, v.name)),
+        'randomPapers': randomPapers.toList(),
+        'beforeRandomMode': beforeRandomMode.name,
       }),
     )) {
       throw StateError('디자인 저장 실패');

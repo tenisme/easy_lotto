@@ -83,6 +83,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('1묶음'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('1묶음'));
     await tester.pumpAndSettle();
     await tester.pageBack();
@@ -171,6 +172,7 @@ void main() {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('1묶음'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('1묶음'));
       await tester.pumpAndSettle();
       await tester.runAsync(() async {
@@ -225,6 +227,7 @@ void main() {
       ),
     );
     await tester.ensureVisible(find.text('1묶음'));
+    await tester.pumpAndSettle();
     expect(find.text('4'), findsOneWidget);
     await tester.tap(find.text('3묶음'));
     await tester.pumpAndSettle();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'banner_scaffold.dart';
 import 'package:flutter/foundation.dart';
 import 'domain/recommendation.dart';
 import 'paper_store.dart';
@@ -20,13 +21,26 @@ Future<bool> saveResultsToPaper(
       child: ListView(
         shrinkWrap: true,
         children: [
-          const ListTile(
-            title: Text('복권 용지 선택'),
-            trailing: Tooltip(
-              triggerMode: TooltipTriggerMode.tap,
-              message:
-                  '기존 복권 용지에 남는 자리가 없는 경우, 선택한 게임 수를 줄이거나 새 복권 용지를 만들어 주십시오.',
-              child: Icon(Icons.help_outline),
+          ListTile(
+            title: const Text('복권 용지 선택'),
+            trailing: IconButton(
+              tooltip: '복권 용지 선택 안내',
+              icon: const Icon(Icons.help_outline),
+              onPressed: () => showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('복권 용지 선택 안내'),
+                  content: const Text(
+                    '이미 5게임이 채워진 복권 용지는 이 화면에 표시되지 않습니다.\n\n기존 복권 용지에 남는 자리가 없는 경우, 선택한 게임 수를 줄이거나 새 복권 용지를 만들어 주십시오.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('확인'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           ListTile(
@@ -178,7 +192,7 @@ class _PaperEditorState extends State<PaperEditor> {
         title.text != widget.paper?.title ||
         !listEquals(games, widget.paper?.games),
     message: '저장하지 않은 용지 변경 사항이 있습니다. 저장하지 않고 이동하시겠습니까?',
-    child: Scaffold(
+    child: BannerScaffold(
       appBar: AppBar(title: const Text('복권 용지 편집')),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -325,7 +339,7 @@ class _GameComposerState extends State<GameComposer> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => BannerScaffold(
     appBar: AppBar(title: const Text('조합 추가')),
     body: ListView(
       padding: const EdgeInsets.all(20),

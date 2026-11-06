@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'banner_scaffold.dart';
 import 'local_storage.dart';
 import 'domain/recommendation.dart';
 import 'preset_store.dart';
@@ -204,7 +205,7 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   Widget build(BuildContext context) => DefaultTabController(
     length: 4,
-    child: Scaffold(
+    child: BannerScaffold(
       appBar: AppBar(
         title: const Text('보관함'),
         bottom: const TabBar(
