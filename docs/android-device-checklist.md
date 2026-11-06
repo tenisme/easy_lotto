@@ -2,9 +2,23 @@
 
 대상: ARM64 Android 7.0(API 24) 이상 기기. 테스트 APK는 디버그 서명이며 정식 스토어 배포용이 아니다.
 
-**아직 APK에 포함되지 않은 후속 변경:** 2026-11-07의 [번호 배치·테마 페이지·보관함 개선](layout-review.md)은 소스와 테스트만 수정한 상태이다. 아래 `0.1.3-preview` APK에는 포함되지 않았다.
+## 최신 업데이트 APK (0.1.4-preview)
 
-## 최신 업데이트 APK (0.1.3-preview)
+사용자 요청에 따라 [번호 배치·테마 페이지·보관함 및 버튼 중앙 정렬 개선](layout-review.md)을 포함한 APK를 생성·검증했다.
+
+- 소스 커밋: `f591ba8`
+- 버전: `0.1.4-preview` (versionCode 5)
+- 앱 이름/패키지 유지: `Easy Lotto 2차 테스트`, `com.example.easy_lotto.preview2`
+- [빌드 실행](https://github.com/tenisme/easy_lotto/actions/runs/42282012347)
+- [최신 APK ZIP 다운로드](https://github.com/tenisme/easy_lotto/actions/runs/42282012347/artifacts/13536965471): 압축 해제 후 `app-debug.apk` 설치. GitHub 로그인이 필요할 수 있다.
+- CI 분석·86개 테스트·빌드 성공. 다운로드한 APK의 패키지·버전·v2 서명·16KiB 정렬을 검증했다.
+- 인증서 SHA-256: `a2143aaee266c2ac6321ca977827ab4bf1640dc92d7bb487c14926f76e294f23`. 기존 2차 앱과 동일하다.
+- APK SHA-256: `8c0874cbffd68fba51893bb79ab7dbff1671ee3e0966a820753d2787d05be0cf`.
+- ZIP 보관 만료: 2026-11-21 04:48 한국 시간.
+- 기존 2차 앱을 삭제하지 않고 업데이트 설치한다.
+- 설치 후 기존 데이터, 테마 저장/취소, 네 디자인, 확대 배치, 보관함, 버튼 문구 중앙 정렬을 확인한다.
+
+## 이전 업데이트 APK (0.1.3-preview)
 
 2026-11-07 요청으로 테마·스타일·임시 광고·안내 개선을 포함한 APK를 생성·검증했다. 이번 확인 항목은 [theme-style-review.md](theme-style-review.md)를 따른다.
 
