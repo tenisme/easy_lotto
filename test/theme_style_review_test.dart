@@ -51,7 +51,11 @@ void main() {
       lessThan(content.data!.indexOf('기존 복권 용지')),
     );
     await tester.pump(const Duration(seconds: 15));
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.textContaining('이미 5게임이 채워진'), findsOneWidget);
+    await tester.tap(find.textContaining('이미 5게임이 채워진'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('이미 5게임이 채워진'), findsOneWidget);
     await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
@@ -158,21 +162,37 @@ void main() {
     await tester.tap(find.widgetWithText(NavigationDestination, '더보기'));
     await tester.pumpAndSettle();
     expect(find.byType(TestAdBanner), findsOneWidget);
-    final picker = find.byType(DropdownButtonFormField<ThemeMode>);
+    final picker = find.byType(AppThemePicker);
     expect(Theme.of(tester.element(picker)).brightness, Brightness.dark);
-    tester.widget<DropdownButtonFormField<ThemeMode>>(picker).onChanged!(
-      ThemeMode.light,
+    await tester.tap(find.text('앱 테마 설정'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('밝게'), 150);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('밝게'));
+    await tester.pumpAndSettle();
+    expect(
+      Theme.of(tester.element(find.byType(AppThemeSettings))).brightness,
+      Brightness.dark,
     );
+    await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
     expect(Theme.of(tester.element(picker)).brightness, Brightness.light);
-    tester.widget<DropdownButtonFormField<ThemeMode>>(picker).onChanged!(
-      ThemeMode.dark,
-    );
+    await tester.tap(find.text('앱 테마 설정'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('어둡게'), 150);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('어둡게'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
     expect(Theme.of(tester.element(picker)).brightness, Brightness.dark);
-    tester.widget<DropdownButtonFormField<ThemeMode>>(picker).onChanged!(
-      ThemeMode.system,
-    );
+    await tester.tap(find.text('앱 테마 설정'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('기기 설정'), 150);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('기기 설정'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
     tester.binding.platformDispatcher.platformBrightnessTestValue =
         Brightness.light;
@@ -204,11 +224,11 @@ void main() {
     );
     await prefs.save();
     final loaded = await DisplayPreferences.load();
-    expect(loaded.resolve('b', Random(1)), PaperDesign.spacious);
+    expect(loaded.resolve('b', Random(1)), PaperDesign.basic);
     final random = Random(4);
     expect(
       {for (var i = 0; i < 30; i++) loaded.resolve('a', random)}.length,
-      3,
+      4,
     );
     expect(loaded.overrides['a'], PaperDesign.cards);
   });
@@ -218,7 +238,7 @@ void main() {
     (tester) async {
       await DisplayPreferences(
         mode: DesignMode.perPaper,
-        defaultDesign: PaperDesign.spacious,
+        defaultDesign: PaperDesign.basic,
         overrides: {'a': PaperDesign.cards, 'b': PaperDesign.basic},
       ).save();
       await tester.pumpWidget(
@@ -235,7 +255,7 @@ void main() {
       expect(prefs.mode, DesignMode.perPaper);
       expect(prefs.randomPapers, {'a'});
       expect(prefs.resolve('b', Random()), PaperDesign.basic);
-      expect(prefs.resolve('c', Random()), PaperDesign.spacious);
+      expect(prefs.resolve('c', Random()), PaperDesign.basic);
       await tester.pumpWidget(const SizedBox());
       await tester.pumpAndSettle();
       await tester.pumpWidget(
@@ -266,7 +286,7 @@ void main() {
     await DisplayPreferences(
       mode: DesignMode.random,
       beforeRandomMode: DesignMode.perPaper,
-      defaultDesign: PaperDesign.spacious,
+      defaultDesign: PaperDesign.basic,
       overrides: {'b': PaperDesign.cards},
     ).save();
     await tester.pumpWidget(
@@ -281,25 +301,34 @@ void main() {
     expect(prefs.mode, DesignMode.perPaper);
     expect(prefs.randomPapers, {'a'});
     expect(prefs.resolve('b', Random()), PaperDesign.cards);
-    expect(prefs.resolve('c', Random()), PaperDesign.spacious);
+    expect(prefs.resolve('c', Random()), PaperDesign.basic);
   });
 
-  for (final label in ['배경 이미지 변경', '번호 칸 디자인 변경']) {
+  for (final label in ['배경 이미지 변경']) {
     testWidgets('$label is a three-second placeholder without navigation', (
       tester,
     ) async {
+      await (await LocalStorage.getInstance()).setBool(
+        'largeViewIntro.v1',
+        true,
+      );
       await tester.pumpWidget(
-        const MaterialApp(home: DesignSettings(paperId: 'a')),
+        MaterialApp(
+          home: PaperView(
+            paper: LotteryPaper('a', '용지', [game]),
+            setAwake: (_) async {},
+          ),
+        ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('스타일 상세 설정'));
+      await tester.tap(find.text('스타일 변경'));
       await tester.pumpAndSettle();
       expect(find.text('배경 이미지 변경'), findsOneWidget);
       expect(find.text('번호 칸 디자인 변경'), findsOneWidget);
       await tester.tap(find.text(label));
       await tester.pumpAndSettle();
       expect(find.text('업데이트 예정입니다'), findsOneWidget);
-      expect(find.byType(DesignSettings), findsOneWidget);
+      expect(find.byType(PaperView), findsOneWidget);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
       expect(find.text('업데이트 예정입니다'), findsNothing);
@@ -419,7 +448,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(
           tester.widget<Text>(find.text('42')).style!.color,
-          theme.colorScheme.onSurface,
+          design == PaperDesign.colorBasic || design == PaperDesign.colorCards
+              ? Colors.black
+              : theme.colorScheme.onSurface,
         );
         expect(tester.takeException(), isNull);
       }

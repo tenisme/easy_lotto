@@ -12,6 +12,7 @@ import 'local_storage.dart';
 import 'app_theme.dart';
 import 'banner_scaffold.dart';
 import 'draw_source.dart';
+import 'number_display.dart';
 
 final drawStore = DrawStore();
 
@@ -141,7 +142,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
               ),
             TextButton(
               onPressed: () => Navigator.pop(context, 'new'),
-              child: const Text('새 설정'),
+              child: const Text('새 설정', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -309,7 +310,10 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                       }
                     }
                   },
-                  child: const Text('결과 이탈 안내 다시 켜기'),
+                  child: const Text(
+                    '결과 이탈 안내 다시 켜기',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),
@@ -394,7 +398,10 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                                       null
                               ? null
                               : edit,
-                          child: const Text('설정 수정'),
+                          child: const Text(
+                            '설정 수정',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -406,7 +413,10 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                                       null
                               ? null
                               : () => generate(selected: true),
-                          child: const Text('번호 생성'),
+                          child: const Text(
+                            '번호 생성',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ),
                     ],
@@ -424,6 +434,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                           : detailed
                           ? '설정 만들기'
                           : '번호 생성',
+                      textAlign: TextAlign.center,
                     ),
                   ),
               ],
@@ -584,7 +595,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                 onPressed: busy || presetStore.items.length < 2
                     ? null
                     : otherSettings,
-                child: const Text('다른 설정 선택'),
+                child: const Text('다른 설정 선택', textAlign: TextAlign.center),
               ),
               if (options != null) ...[
                 if (presetStore.find(presetId) == null)
@@ -594,7 +605,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                   const Text('생성 후 설정이 변경되었습니다.'),
                 TextButton(
                   onPressed: busy ? null : edit,
-                  child: const Text('설정 수정'),
+                  child: const Text('설정 수정', textAlign: TextAlign.center),
                 ),
               ],
               for (var i = 0; i < games.length; i++)
@@ -626,28 +637,17 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            for (final n in games[i].numbers)
-                              Expanded(
-                                child: Column(
-                                  children: [
-                                    CircleAvatar(child: Text('$n')),
-                                    IconButton(
-                                      tooltip: '$n 내 번호 저장',
-                                      isSelected: libraryStore.numbers.contains(
-                                        n,
-                                      ),
-                                      selectedIcon: const Icon(Icons.favorite),
-                                      icon: const Icon(Icons.favorite_border),
-                                      onPressed: () => persist(
-                                        () => libraryStore.toggleNumber(n),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
+                        NumberGrid(
+                          numbers: games[i].numbers,
+                          fontSize: 18,
+                          below: (n) => IconButton(
+                            tooltip: '$n 내 번호 저장',
+                            isSelected: libraryStore.numbers.contains(n),
+                            selectedIcon: const Icon(Icons.favorite),
+                            icon: const Icon(Icons.favorite_border),
+                            onPressed: () =>
+                                persist(() => libraryStore.toggleNumber(n)),
+                          ),
                         ),
                         TextButton(
                           onPressed: libraryStore.contains(games[i])
@@ -660,6 +660,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                             libraryStore.contains(games[i])
                                 ? '저장된 조합'
                                 : '조합 저장',
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ],
@@ -668,7 +669,10 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                 ),
               FilledButton(
                 onPressed: busy ? null : regenerate,
-                child: Text(busy ? '생성 중입니다' : '다시 생성'),
+                child: Text(
+                  busy ? '생성 중입니다' : '다시 생성',
+                  textAlign: TextAlign.center,
+                ),
               ),
               FilledButton(
                 onPressed: busy || selectedGames.isEmpty
@@ -694,7 +698,10 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                           if (mounted) setState(() => busy = false);
                         }
                       },
-                child: const Text('선택한 게임 복권 용지에 저장'),
+                child: const Text(
+                  '선택한 게임 복권 용지에 저장',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ],
           ),

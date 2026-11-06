@@ -2,16 +2,19 @@ import 'dart:convert';
 import 'dart:math';
 import 'local_storage.dart';
 
-enum PaperDesign { basic, spacious, cards }
+enum PaperDesign { colorBasic, colorCards, basic, cards }
 
 enum DesignMode { basic, perPaper, random }
 
-const designNames = ['기본', '간격 넓게', '카드형'];
+const designNames = ['컬러 기본', '컬러 카드', '흑백 기본', '흑백 카드'];
+
+PaperDesign decodeDesign(String name) =>
+    name == 'spacious' ? PaperDesign.basic : PaperDesign.values.byName(name);
 
 class DisplayPreferences {
   DisplayPreferences({
     this.mode = DesignMode.basic,
-    this.defaultDesign = PaperDesign.basic,
+    this.defaultDesign = PaperDesign.colorBasic,
     Map<String, PaperDesign> overrides = const {},
     Set<String> randomPapers = const {},
     this.beforeRandomMode = DesignMode.basic,
@@ -40,9 +43,9 @@ class DisplayPreferences {
     final j = jsonDecode(raw) as Map<String, dynamic>;
     return DisplayPreferences(
       mode: DesignMode.values.byName(j['mode'] as String),
-      defaultDesign: PaperDesign.values.byName(j['default'] as String),
+      defaultDesign: decodeDesign(j['default'] as String),
       overrides: (j['overrides'] as Map<String, dynamic>).map(
-        (k, v) => MapEntry(k, PaperDesign.values.byName(v as String)),
+        (k, v) => MapEntry(k, decodeDesign(v as String)),
       ),
       randomPapers: ((j['randomPapers'] as List?) ?? []).cast<String>().toSet(),
       beforeRandomMode:

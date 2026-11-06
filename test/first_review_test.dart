@@ -135,7 +135,7 @@ void main() {
     (tester) async {
       await DisplayPreferences(
         mode: DesignMode.perPaper,
-        defaultDesign: PaperDesign.spacious,
+        defaultDesign: PaperDesign.basic,
         overrides: {'a': PaperDesign.cards},
       ).save();
       await tester.pumpWidget(
@@ -144,17 +144,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<DropdownButtonFormField<PaperDesign>>(
-              find.byType(DropdownButtonFormField<PaperDesign>),
+            .widgetList<RadioListTile<PaperDesign>>(
+              find.byType(RadioListTile<PaperDesign>),
             )
-            .onChanged,
-        isNull,
+            .every((c) => c.enabled == false),
+        isTrue,
       );
+      await tester.scrollUntilVisible(find.byType(RadioGroup<int>), 200);
       tester
-          .widget<DropdownButtonFormField<int>>(
-            find.byType(DropdownButtonFormField<int>),
-          )
-          .onChanged!(PaperDesign.basic.index);
+          .widget<RadioGroup<int>>(find.byType(RadioGroup<int>))
+          .onChanged(PaperDesign.basic.index);
       await tester.pump();
       await tester.scrollUntilVisible(find.text('변경 완료'), 200);
       await tester.tap(find.text('변경 완료'));
@@ -162,7 +161,7 @@ void main() {
       final prefs = await DisplayPreferences.load();
       expect(prefs.resolve('a', Random()), PaperDesign.cards);
       expect(prefs.resolve('b', Random()), PaperDesign.basic);
-      expect(prefs.resolve('c', Random()), PaperDesign.spacious);
+      expect(prefs.resolve('c', Random()), PaperDesign.basic);
     },
   );
   testWidgets(

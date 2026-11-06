@@ -9,6 +9,7 @@ import 'paper_flow.dart';
 import 'paper_view.dart';
 import 'settings_editor.dart';
 import 'collection_order.dart';
+import 'number_display.dart';
 
 class SavedGame {
   SavedGame(this.game, this.options, {String? source})
@@ -176,11 +177,11 @@ class _LibraryPageState extends State<LibraryPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소'),
+              child: const Text('취소', textAlign: TextAlign.center),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('삭제'),
+              child: const Text('삭제', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -211,17 +212,17 @@ class _LibraryPageState extends State<LibraryPage> {
         bottom: const TabBar(
           isScrollable: true,
           tabs: [
-            Tab(text: '내 번호'),
-            Tab(text: '저장한 조합'),
             Tab(text: '복권 용지'),
+            Tab(text: '저장한 조합'),
+            Tab(text: '내 번호'),
             Tab(text: '저장한 설정'),
           ],
         ),
       ),
       body: ListenableBuilder(
         listenable: Listenable.merge([libraryStore, paperStore, presetStore]),
-        builder: (context, _) => TabBarView(
-          children: [
+        builder: (context, _) {
+          final pages = <Widget>[
             SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: libraryStore.numbers.isEmpty
@@ -233,17 +234,35 @@ class _LibraryPageState extends State<LibraryPage> {
                           children: [
                             for (final n
                                 in (libraryStore.numbers.toList()..sort()))
-                              FilterChip(
-                                showCheckmark: false,
-                                label: Text('$n'),
+                              Semantics(
                                 selected: selectedNumbers.contains(n),
-                                onSelected: (v) => setState(() {
-                                  if (v) {
-                                    selectedNumbers.add(n);
-                                  } else {
-                                    selectedNumbers.remove(n);
-                                  }
-                                }),
+                                button: true,
+                                label: '$n 번호 선택',
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: () => setState(() {
+                                    if (!selectedNumbers.contains(n)) {
+                                      selectedNumbers.add(n);
+                                    } else {
+                                      selectedNumbers.remove(n);
+                                    }
+                                  }),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        width: 3,
+                                        color: selectedNumbers.contains(n)
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
+                                            : Colors.transparent,
+                                      ),
+                                    ),
+                                    child: NumberTile(number: n, fontSize: 18),
+                                  ),
+                                ),
                               ),
                           ],
                         ),
@@ -262,15 +281,25 @@ class _LibraryPageState extends State<LibraryPage> {
                                     }
                                   }
                                 },
-                          child: const Text('선택 번호 삭제'),
+                          child: const Text(
+                            '선택 번호 삭제',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       ],
                     ),
             ),
             ListView(
               children: [
-                TextButton(onPressed: editGame, child: const Text('조합 직접 추가')),
+                TextButton(
+                  onPressed: editGame,
+                  child: const Text('조합 직접 추가', textAlign: TextAlign.center),
+                ),
                 if (libraryStore.games.isEmpty) const Text('저장한 조합이 없습니다.'),
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text('조합을 누르면 번호를 수정할 수 있습니다.'),
+                ),
                 TextButton(
                   onPressed: selectedGames.isEmpty || selectedGames.length > 5
                       ? null
@@ -279,7 +308,10 @@ class _LibraryPageState extends State<LibraryPage> {
                           selectedGames.toList(),
                           draws,
                         ),
-                  child: const Text('선택 조합으로 복권 용지 만들기'),
+                  child: const Text(
+                    '선택 조합으로 복권 용지 만들기',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
                 CollectionOrder<SavedGame>(
                   storageKey: 'order.games.v1',
@@ -297,7 +329,10 @@ class _LibraryPageState extends State<LibraryPage> {
                       }),
                     ),
                     onTap: () => editGame(saved.game),
-                    title: Text(saved.game.numbers.join(' · ')),
+                    title: NumberGrid(
+                      numbers: saved.game.numbers,
+                      fontSize: 18,
+                    ),
                     subtitle: Text(
                       saved.source == 'manual'
                           ? '직접 입력'
@@ -316,11 +351,17 @@ class _LibraryPageState extends State<LibraryPage> {
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
-                                child: const Text('취소'),
+                                child: const Text(
+                                  '취소',
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
-                                child: const Text('삭제'),
+                                child: const Text(
+                                  '삭제',
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                             ],
                           ),
@@ -353,7 +394,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       builder: (_) => PaperEditor(draws: draws),
                     ),
                   ),
-                  child: const Text('새 복권 용지'),
+                  child: const Text('새 복권 용지', textAlign: TextAlign.center),
                 ),
                 CollectionOrder<LotteryPaper>(
                   storageKey: 'order.papers.v1',
@@ -384,7 +425,7 @@ class _LibraryPageState extends State<LibraryPage> {
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
                           child: SizedBox(
                             width: double.infinity,
                             child: OutlinedButton(
@@ -395,7 +436,10 @@ class _LibraryPageState extends State<LibraryPage> {
                                       PaperView(paper: p, draws: draws),
                                 ),
                               ),
-                              child: const Text('번호 크게 보기'),
+                              child: const Text(
+                                '번호 크게 보기',
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           ),
                         ),
@@ -407,7 +451,10 @@ class _LibraryPageState extends State<LibraryPage> {
             ),
             ListView(
               children: [
-                TextButton(onPressed: editPreset, child: const Text('새 설정')),
+                TextButton(
+                  onPressed: editPreset,
+                  child: const Text('새 설정', textAlign: TextAlign.center),
+                ),
                 CollectionOrder<Preset>(
                   storageKey: 'order.presets.v1',
                   items: presetStore.items,
@@ -437,8 +484,9 @@ class _LibraryPageState extends State<LibraryPage> {
                 ),
               ],
             ),
-          ],
-        ),
+          ];
+          return TabBarView(children: [pages[2], pages[1], pages[0], pages[3]]);
+        },
       ),
     ),
   );

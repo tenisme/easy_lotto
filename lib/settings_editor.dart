@@ -74,11 +74,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('아니요'),
+              child: const Text('아니요', textAlign: TextAlign.center),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('네'),
+              child: const Text('네', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -106,11 +106,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
+              child: const Text('취소', textAlign: TextAlign.center),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, controller.text),
-              child: const Text('저장'),
+              child: const Text('저장', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -254,11 +254,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('취소'),
+                child: const Text('취소', textAlign: TextAlign.center),
               ),
               FilledButton(
                 onPressed: valid ? () => Navigator.pop(context, n) : null,
-                child: const Text('확인'),
+                child: const Text('확인', textAlign: TextAlign.center),
               ),
             ],
           );
@@ -284,11 +284,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('저장하지 않음'),
+                child: const Text('저장하지 않음', textAlign: TextAlign.center),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('저장하고 나가기'),
+                child: const Text('저장하고 나가기', textAlign: TextAlign.center),
               ),
             ],
           ),
@@ -358,7 +358,10 @@ class _SettingsEditorState extends State<SettingsEditor> {
                   TextButton(
                     onPressed: () =>
                         update(() => favoritesOnly = !favoritesOnly),
-                    child: Text(favoritesOnly ? '전체 번호 보기' : '내 번호에서 선택'),
+                    child: Text(
+                      favoritesOnly ? '전체 번호 보기' : '내 번호에서 선택',
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                   Wrap(
                     spacing: 4,
@@ -391,11 +394,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
+              child: const Text('취소', textAlign: TextAlign.center),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, selected),
-              child: const Text('적용'),
+              child: const Text('적용', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -444,7 +447,7 @@ class _SettingsEditorState extends State<SettingsEditor> {
           if (presetId != null)
             TextButton(
               onPressed: saving ? null : () => save(rename: true),
-              child: const Text('이름 변경'),
+              child: const Text('이름 변경', textAlign: TextAlign.center),
             ),
         ],
       ),
@@ -456,14 +459,17 @@ class _SettingsEditorState extends State<SettingsEditor> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: saving ? null : save,
-                  child: const Text('설정 저장'),
+                  child: const Text('설정 저장', textAlign: TextAlign.center),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
                   onPressed: saving ? null : complete,
-                  child: Text(widget.completeOnly ? '설정 완료' : '번호 생성'),
+                  child: Text(
+                    widget.completeOnly ? '설정 완료' : '번호 생성',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
             ],
@@ -621,7 +627,7 @@ class _SettingsEditorState extends State<SettingsEditor> {
                 const Text('미출현 규칙은 최근 5회 데이터 저장 후 사용할 수 있습니다.'),
               TextButton(
                 onPressed: () => setState(() => load(RecommendationOptions())),
-                child: const Text('모든 설정 초기화'),
+                child: const Text('모든 설정 초기화', textAlign: TextAlign.center),
               ),
             ],
           ),

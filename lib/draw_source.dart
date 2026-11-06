@@ -39,6 +39,7 @@ class DrawSource extends StatelessWidget {
         child: const Text(
           '출처 - 동행복권',
           style: TextStyle(decoration: TextDecoration.underline),
+          textAlign: TextAlign.center,
         ),
       ),
     ],

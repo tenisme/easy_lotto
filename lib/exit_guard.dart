@@ -38,11 +38,11 @@ Future<bool> confirmResultLoss(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(stay),
+            child: Text(stay, textAlign: TextAlign.center),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(leave),
+            child: Text(leave, textAlign: TextAlign.center),
           ),
         ],
       ),

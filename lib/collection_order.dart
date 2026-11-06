@@ -143,9 +143,14 @@ class _CollectionOrderState<T> extends State<CollectionOrder<T>> {
             children: [
               Expanded(child: widget.builder(items[i])),
               if (mode == 'manual')
-                Column(
+                Row(
                   children: [
                     IconButton(
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      visualDensity: VisualDensity.standard,
                       tooltip: '항목 위로 이동',
                       onPressed: saving || i == 0
                           ? null
@@ -158,6 +163,11 @@ class _CollectionOrderState<T> extends State<CollectionOrder<T>> {
                       icon: const Icon(Icons.arrow_upward),
                     ),
                     IconButton(
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      visualDensity: VisualDensity.standard,
                       tooltip: '항목 아래로 이동',
                       onPressed: saving || i == items.length - 1
                           ? null

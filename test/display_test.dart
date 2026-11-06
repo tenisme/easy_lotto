@@ -23,12 +23,12 @@ void main() {
     () async {
       final p = DisplayPreferences(
         mode: DesignMode.random,
-        defaultDesign: PaperDesign.spacious,
+        defaultDesign: PaperDesign.basic,
         overrides: {'p': PaperDesign.cards},
       );
       await p.save();
       final restored = await DisplayPreferences.load();
-      expect(restored.defaultDesign, PaperDesign.spacious);
+      expect(restored.defaultDesign, PaperDesign.basic);
       expect(restored.overrides['p'], PaperDesign.cards);
       final per = DisplayPreferences(
         mode: DesignMode.perPaper,
@@ -36,11 +36,11 @@ void main() {
         overrides: restored.overrides,
       );
       expect(per.resolve('p', Random(1)), PaperDesign.cards);
-      expect(per.resolve('other', Random(1)), PaperDesign.spacious);
+      expect(per.resolve('other', Random(1)), PaperDesign.basic);
       final rng = Random(3);
       expect(
         {for (var i = 0; i < 30; i++) restored.resolve('p', rng)}.length,
-        3,
+        4,
       );
     },
   );
@@ -134,19 +134,19 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('열 때마다 랜덤'));
     await tester.pumpAndSettle();
-    final dropdowns = tester.widgetList<DropdownButtonFormField<PaperDesign>>(
-      find.byType(DropdownButtonFormField<PaperDesign>),
+    final choices = tester.widgetList<RadioListTile<PaperDesign>>(
+      find.byType(RadioListTile<PaperDesign>),
     );
-    expect(dropdowns.single.onChanged, isNull);
+    expect(choices.every((c) => c.enabled == false), isTrue);
     await tester.tap(find.text('기본 디자인').first);
     await tester.pumpAndSettle();
     expect(
       tester
-          .widget<DropdownButtonFormField<PaperDesign>>(
-            find.byType(DropdownButtonFormField<PaperDesign>),
+          .widgetList<RadioListTile<PaperDesign>>(
+            find.byType(RadioListTile<PaperDesign>),
           )
-          .onChanged,
-      isNotNull,
+          .every((c) => c.enabled == true),
+      isTrue,
     );
   });
 }

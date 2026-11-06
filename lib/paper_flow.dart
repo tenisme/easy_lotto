@@ -7,6 +7,7 @@ import 'library.dart';
 import 'settings_editor.dart';
 import 'exit_guard.dart';
 import 'preset_store.dart';
+import 'persistent_help.dart';
 
 Future<bool> saveResultsToPaper(
   BuildContext context,
@@ -23,22 +24,13 @@ Future<bool> saveResultsToPaper(
         children: [
           ListTile(
             title: const Text('복권 용지 선택'),
-            trailing: IconButton(
-              tooltip: '복권 용지 선택 안내',
-              icon: const Icon(Icons.help_outline),
-              onPressed: () => showDialog<void>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('복권 용지 선택 안내'),
-                  content: const Text(
-                    '이미 5게임이 채워진 복권 용지는 이 화면에 표시되지 않습니다.\n\n기존 복권 용지에 남는 자리가 없는 경우, 선택한 게임 수를 줄이거나 새 복권 용지를 만들어 주십시오.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('확인'),
-                    ),
-                  ],
+            trailing: Builder(
+              builder: (helpContext) => IconButton(
+                tooltip: '복권 용지 선택 안내',
+                icon: const Icon(Icons.help_outline),
+                onPressed: () => showPersistentHelp(
+                  helpContext,
+                  '이미 5게임이 채워진 복권 용지는 이 화면에 표시되지 않습니다.\n\n기존 복권 용지에 남는 자리가 없는 경우, 선택한 게임 수를 줄이거나 새 복권 용지를 만들어 주십시오.',
                 ),
               ),
             ),
@@ -150,11 +142,11 @@ class _PaperEditorState extends State<PaperEditor> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소'),
+              child: const Text('취소', textAlign: TextAlign.center),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('교체'),
+              child: const Text('교체', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -215,7 +207,7 @@ class _PaperEditorState extends State<PaperEditor> {
                       if (!widget.fromResults)
                         TextButton(
                           onPressed: busy ? null : () => add(replace: i),
-                          child: const Text('교체'),
+                          child: const Text('교체', textAlign: TextAlign.center),
                         ),
                       IconButton(
                         tooltip: '위로 이동',
@@ -232,7 +224,7 @@ class _PaperEditorState extends State<PaperEditor> {
                           onPressed: busy
                               ? null
                               : () => setState(() => games.removeAt(i)),
-                          child: const Text('제거'),
+                          child: const Text('제거', textAlign: TextAlign.center),
                         ),
                     ],
                   ),
@@ -242,11 +234,14 @@ class _PaperEditorState extends State<PaperEditor> {
           if (games.length < 5 && !widget.fromResults)
             OutlinedButton(
               onPressed: busy ? null : add,
-              child: const Text('조합 추가'),
+              child: const Text('조합 추가', textAlign: TextAlign.center),
             ),
           FilledButton(
             onPressed: busy || games.isEmpty ? null : save,
-            child: const Text('복권 용지 저장'),
+            child: Text(
+              widget.paper == null ? '복권 용지 저장' : '편집한 내용 저장',
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
@@ -405,20 +400,20 @@ class _GameComposerState extends State<GameComposer> {
             ),
           TextButton(
             onPressed: busy ? null : editOptions,
-            child: const Text('설정 수정'),
+            child: const Text('설정 수정', textAlign: TextAlign.center),
           ),
         ],
         Text('선택한 조합: ${(selected.toList()..sort()).join(' · ')}'),
         if (mode >= 2)
           OutlinedButton(
             onPressed: busy ? null : generate,
-            child: const Text('다시 생성'),
+            child: const Text('다시 생성', textAlign: TextAlign.center),
           ),
         FilledButton(
           onPressed: busy || selected.length != 6
               ? null
               : () => Navigator.pop(context, LottoGame(selected)),
-          child: Text(widget.actionLabel),
+          child: Text(widget.actionLabel, textAlign: TextAlign.center),
         ),
       ],
     ),

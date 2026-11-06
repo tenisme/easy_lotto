@@ -9,6 +9,7 @@ import 'domain/recommendation.dart';
 import 'paper_store.dart';
 import 'paper_flow.dart';
 import 'exit_guard.dart';
+import 'number_display.dart';
 
 class PaperView extends StatefulWidget {
   const PaperView({
@@ -29,6 +30,7 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
   PaperDesign design = PaperDesign.basic;
   bool ready = false, keepOn = false;
   bool covered = false;
+  double textZoom = 1, widthZoom = 1;
   LotteryPaper get paper =>
       paperStore.items.where((p) => p.id == widget.paper.id).firstOrNull ??
       widget.paper;
@@ -69,7 +71,7 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
           actions: [
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('확인'),
+              child: const Text('확인', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -118,6 +120,43 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
     covered = true;
     await wake(false);
     if (!mounted) return;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('스타일 변경')),
+            ListTile(
+              leading: const Icon(Icons.wallpaper),
+              title: const Text('배경 이미지 변경'),
+              onTap: () => Navigator.pop(context, 'background'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.grid_view),
+              title: const Text('번호 칸 디자인 변경'),
+              onTap: () => Navigator.pop(context, 'numbers'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (choice != 'numbers') {
+      covered = false;
+      await wake(keepOn);
+      if (choice == 'background' && mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('업데이트 예정입니다'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+      }
+      return;
+    }
     final preferences = await Navigator.push<DisplayPreferences>(
       context,
       MaterialPageRoute(builder: (_) => DesignSettings(paperId: paper.id)),
@@ -129,6 +168,61 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
     }
     await wake(keepOn);
   }
+
+  Future<void> zoom() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) => StatefulBuilder(
+      builder: (context, update) => SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('임시 확대 테스트'),
+                const Text('이 화면에만 적용됩니다. 기기의 실제 확대 설정을 변경하지 않습니다.'),
+                Text('글자 확대 ${(textZoom * 100).round()}%'),
+                Slider(
+                  key: const ValueKey('text-zoom'),
+                  value: textZoom,
+                  min: 1,
+                  max: 3,
+                  divisions: 8,
+                  onChanged: (v) {
+                    setState(() => textZoom = v);
+                    update(() {});
+                  },
+                ),
+                Text('표시 폭 ${(100 / widthZoom).round()}%'),
+                Slider(
+                  key: const ValueKey('width-zoom'),
+                  value: widthZoom,
+                  min: 1,
+                  max: 2,
+                  divisions: 4,
+                  onChanged: (v) {
+                    setState(() => widthZoom = v);
+                    update(() {});
+                  },
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      textZoom = 1;
+                      widthZoom = 1;
+                    });
+                    update(() {});
+                  },
+                  child: const Text('확대 초기화', textAlign: TextAlign.center),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 
   Future<void> edit() async {
     covered = true;
@@ -148,7 +242,16 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => BannerScaffold(
-    appBar: AppBar(title: Text(paper.title)),
+    appBar: AppBar(
+      title: Text(paper.title),
+      actions: [
+        IconButton(
+          tooltip: '확대 테스트',
+          onPressed: ready ? zoom : null,
+          icon: const Icon(Icons.zoom_in),
+        ),
+      ],
+    ),
     bottomNavigationBar: SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -157,14 +260,14 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
             Expanded(
               child: OutlinedButton(
                 onPressed: ready ? style : null,
-                child: const Text('스타일 변경'),
+                child: const Text('스타일 변경', textAlign: TextAlign.center),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: FilledButton(
                 onPressed: ready ? edit : null,
-                child: const Text('용지 내용 편집'),
+                child: const Text('용지 내용 편집', textAlign: TextAlign.center),
               ),
             ),
           ],
@@ -199,10 +302,26 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
                   },
                 ),
                 for (var i = 0; i < paper.games.length; i++)
-                  GameDisplay(
-                    label: String.fromCharCode(65 + i),
-                    numbers: paper.games[i].numbers,
-                    design: design,
+                  LayoutBuilder(
+                    builder: (context, constraints) => Center(
+                      child: SizedBox(
+                        width: constraints.maxWidth / widthZoom,
+                        child: MediaQuery(
+                          data: MediaQuery.of(context).copyWith(
+                            textScaler: TextScaler.linear(
+                              MediaQuery.textScalerOf(context).scale(20) /
+                                  20 *
+                                  textZoom,
+                            ),
+                          ),
+                          child: GameDisplay(
+                            label: String.fromCharCode(65 + i),
+                            numbers: paper.games[i].numbers,
+                            design: design,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -222,60 +341,31 @@ class GameDisplay extends StatelessWidget {
   final PaperDesign design;
   @override
   Widget build(BuildContext context) => Container(
-    margin: EdgeInsets.symmetric(
-      vertical: design == PaperDesign.spacious ? 18 : 6,
-    ),
+    margin: const EdgeInsets.symmetric(vertical: 6),
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surface,
       border: Border.all(color: Theme.of(context).colorScheme.outline),
-      borderRadius: BorderRadius.circular(design == PaperDesign.cards ? 16 : 4),
+      borderRadius: BorderRadius.circular(8),
     ),
     child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           '게임 $label',
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: design == PaperDesign.spacious ? 16 : 4,
-          runSpacing: 10,
-          children: [
-            for (final n in numbers)
-              Container(
-                constraints: const BoxConstraints(minWidth: 40, minHeight: 44),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                decoration: BoxDecoration(
-                  color: design == PaperDesign.cards
-                      ? Theme.of(context).colorScheme.surfaceContainerHighest
-                      : Theme.of(context).colorScheme.surface,
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                  borderRadius: BorderRadius.circular(
-                    design == PaperDesign.cards ? 6 : 30,
-                  ),
-                ),
-                child: Center(
-                  widthFactor: 1,
-                  heightFactor: 1,
-                  child: Text(
-                    '$n',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-              ),
-          ],
+        NumberGrid(
+          numbers: numbers,
+          colored:
+              design == PaperDesign.colorBasic ||
+              design == PaperDesign.colorCards,
+          card: design == PaperDesign.cards || design == PaperDesign.colorCards,
         ),
       ],
     ),
@@ -294,7 +384,7 @@ class _DesignSettingsState extends State<DesignSettings> {
   DesignMode mode = DesignMode.basic;
   DesignMode normalMode = DesignMode.basic;
   bool randomAll = true;
-  PaperDesign base = PaperDesign.basic;
+  PaperDesign base = PaperDesign.colorBasic;
   PaperDesign? paperDesign;
   bool saving = false;
   bool loadFailed = false;
@@ -374,46 +464,17 @@ class _DesignSettingsState extends State<DesignSettings> {
     }
   }
 
-  Future<void> details() async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(title: Text('스타일 상세 설정')),
-            ListTile(
-              leading: const Icon(Icons.wallpaper),
-              title: const Text('배경 이미지 변경'),
-              onTap: () => Navigator.pop(context, 'background'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.grid_view),
-              title: const Text('번호 칸 디자인 변경'),
-              onTap: () => Navigator.pop(context, 'numbers'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (choice != null && mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('업데이트 예정입니다'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-    }
-  }
-
   @override
   Widget build(BuildContext context) => ExitGuard(
     needsConfirmation: original != null && !_sameDisplay(current(), original!),
     message: '저장하지 않은 스타일 변경 사항이 있습니다. 저장하지 않고 이동하시겠습니까?',
     child: BannerScaffold(
-      appBar: AppBar(title: const Text('스타일 변경')),
+      appBar: AppBar(
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('번호 칸 디자인 변경'),
+        ),
+      ),
       bottomNavigationBar: original == null
           ? null
           : SafeArea(
@@ -422,16 +483,9 @@ class _DesignSettingsState extends State<DesignSettings> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: saving ? null : details,
-                        child: const Text('스타일 상세 설정'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
                       child: FilledButton(
                         onPressed: saving ? null : save,
-                        child: const Text('변경 완료'),
+                        child: const Text('변경 완료', textAlign: TextAlign.center),
                       ),
                     ),
                   ],
@@ -445,7 +499,7 @@ class _DesignSettingsState extends State<DesignSettings> {
                   setState(() => loadFailed = false);
                   load();
                 },
-                child: const Text('다시 불러오기'),
+                child: const Text('다시 불러오기', textAlign: TextAlign.center),
               ),
             )
           : original == null
@@ -453,23 +507,31 @@ class _DesignSettingsState extends State<DesignSettings> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                const Text('앱 테마를 따릅니다. 여기서는 번호 표시 형태와 간격을 변경합니다.'),
+                const Text('앱 테마를 따릅니다. 번호 칸 디자인을 선택합니다.'),
                 const Text('적용 방식'),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final m in DesignMode.values)
-                      ChoiceChip(
-                        label: Text(['기본 디자인', '용지별 디자인', '열 때마다 랜덤'][m.index]),
-                        selected: mode == m,
-                        onSelected: saving
-                            ? null
-                            : (_) => setState(() {
-                                mode = m;
-                                if (m != DesignMode.random) normalMode = m;
-                              }),
-                      ),
-                  ],
+                RadioGroup<DesignMode>(
+                  groupValue: mode,
+                  onChanged: (m) {
+                    if (!saving) {
+                      setState(() {
+                        mode = m!;
+                        if (m != DesignMode.random) normalMode = m;
+                      });
+                    }
+                  },
+                  child: Column(
+                    children: [
+                      for (final m in DesignMode.values)
+                        RadioListTile<DesignMode>(
+                          enabled: !saving,
+                          value: m,
+                          title: Text(
+                            ['기본 디자인', '용지별 디자인', '열 때마다 랜덤'][m.index],
+                            softWrap: true,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 const Text('랜덤을 사용해도 이전 디자인 설정은 유지됩니다.'),
                 if (mode == DesignMode.random)
@@ -491,46 +553,56 @@ class _DesignSettingsState extends State<DesignSettings> {
                       ],
                     ),
                   ),
-                DropdownButtonFormField<PaperDesign>(
-                  key: ValueKey('base-$base'),
-                  initialValue: base,
-                  decoration: const InputDecoration(
-                    labelText: '기본 디자인 · 모든 용지 공통',
-                  ),
-                  items: [
-                    for (final s in PaperDesign.values)
-                      DropdownMenuItem(
-                        value: s,
-                        child: Text(designNames[s.index]),
-                      ),
-                  ],
-                  onChanged: saving || mode != DesignMode.basic
-                      ? null
-                      : (v) => setState(() => base = v!),
-                ),
-                DropdownButtonFormField<int>(
-                  key: ValueKey('override-$paperDesign'),
-                  initialValue: paperDesign?.index ?? -1,
-                  decoration: InputDecoration(
-                    labelText: '이 용지의 디자인',
-                    helperText: '이 용지에만 적용됩니다. 개별 지정이 없는 용지는 기본 디자인을 사용합니다.',
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: -1, child: Text('기본 디자인 사용')),
-                    for (final s in PaperDesign.values)
-                      DropdownMenuItem(
-                        value: s.index,
-                        child: Text(designNames[s.index]),
-                      ),
-                  ],
-                  onChanged: saving || mode != DesignMode.perPaper
-                      ? null
-                      : (v) => setState(
-                          () => paperDesign = v == -1
-                              ? null
-                              : PaperDesign.values[v!],
+                const Text('기본 디자인 · 모든 용지 공통'),
+                RadioGroup<PaperDesign>(
+                  groupValue: base,
+                  onChanged: (v) {
+                    if (!saving && mode == DesignMode.basic) {
+                      setState(() => base = v!);
+                    }
+                  },
+                  child: Column(
+                    children: [
+                      for (final s in PaperDesign.values)
+                        RadioListTile<PaperDesign>(
+                          enabled: !saving && mode == DesignMode.basic,
+                          value: s,
+                          title: Text(designNames[s.index], softWrap: true),
                         ),
+                    ],
+                  ),
                 ),
+                const Text('이 용지의 디자인'),
+                const Text('이 용지에만 적용됩니다. 개별 지정이 없는 용지는 기본 디자인을 사용합니다.'),
+                RadioGroup<int>(
+                  groupValue: paperDesign?.index ?? -1,
+                  onChanged: (v) {
+                    if (!saving && mode == DesignMode.perPaper) {
+                      setState(
+                        () => paperDesign = v == -1
+                            ? null
+                            : PaperDesign.values[v!],
+                      );
+                    }
+                  },
+                  child: Column(
+                    children: [
+                      RadioListTile<int>(
+                        enabled: !saving && mode == DesignMode.perPaper,
+                        value: -1,
+                        title: const Text('기본 디자인 사용'),
+                      ),
+                      for (final s in PaperDesign.values)
+                        RadioListTile<int>(
+                          enabled: !saving && mode == DesignMode.perPaper,
+                          value: s.index,
+                          title: Text(designNames[s.index], softWrap: true),
+                        ),
+                    ],
+                  ),
+                ),
+                if (mode == DesignMode.random && !randomAll)
+                  const Text('전체 랜덤이 해제됩니다. 다른 용지는 기존 설정으로 돌아갑니다.'),
                 for (final s in PaperDesign.values) ...[
                   Text(designNames[s.index]),
                   GameDisplay(
