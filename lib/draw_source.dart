@@ -13,6 +13,7 @@ class DrawSource extends StatelessWidget {
   final Future<bool> Function(Uri)? open;
   @override
   Widget build(BuildContext context) => Wrap(
+    alignment: WrapAlignment.center,
     crossAxisAlignment: WrapCrossAlignment.center,
     children: [
       Text(round == null ? status : '$round회 기준'),

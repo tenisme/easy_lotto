@@ -13,6 +13,7 @@ import 'app_theme.dart';
 import 'banner_scaffold.dart';
 import 'draw_source.dart';
 import 'number_display.dart';
+import 'selection_tiles.dart';
 
 final drawStore = DrawStore();
 
@@ -50,6 +51,7 @@ class _MainAppState extends State<MainApp> {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff386b56)),
           useMaterial3: true,
+          chipTheme: const ChipThemeData(showCheckmark: false),
         ),
         darkTheme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
@@ -57,6 +59,7 @@ class _MainAppState extends State<MainApp> {
             brightness: Brightness.dark,
           ),
           useMaterial3: true,
+          chipTheme: const ChipThemeData(showCheckmark: false),
         ),
         themeMode: theme.mode,
         home: const RecommendationHome(),
@@ -229,19 +232,11 @@ class _RecommendationHomeState extends State<RecommendationHome> {
   @override
   Widget build(BuildContext context) => BannerScaffold(
     showBanner: tab != 1,
-    appBar: tab != 0
-        ? null
-        : AppBar(
-            title: const Text('추천'),
-            actions: [
-              IconButton(
-                tooltip: '보관함',
-                icon: const Icon(Icons.inventory_2_outlined),
-                onPressed: () => setState(() => tab = 1),
-              ),
-            ],
-          ),
+    appBar: tab != 0 ? null : AppBar(title: const Text('추천')),
     bottomNavigationBar: NavigationBar(
+      height: MediaQuery.orientationOf(context) == Orientation.landscape
+          ? 68
+          : 80,
       selectedIndex: tab,
       onDestinationSelected: (v) => setState(() => tab = v),
       destinations: const [
@@ -273,24 +268,9 @@ class _RecommendationHomeState extends State<RecommendationHome> {
               padding: const EdgeInsets.all(24),
               children: [
                 const Text('더보기', style: TextStyle(fontSize: 24)),
-                DrawSource(
-                  round: drawStore.draws.firstOrNull?.round,
-                  status: drawStore.status,
-                ),
                 const AppThemePicker(),
-                const ListTile(
-                  title: Text('로또 번호 추천 안내'),
-                  subtitle: Text(
-                    '본 앱은 다양한 번호 선택 조건을 활용할 수 있는 편의를 제공하지만, 이러한 조건들과 과거의 추첨 결과 등은 당첨을 예측하거나 보장하지 않음을 유의하여 주시기 바랍니다.',
-                  ),
-                ),
-                const ListTile(
-                  title: Text('저장 안내'),
-                  subtitle: Text(
-                    '저장한 번호 및 설정 등은 앱 내부 저장소에 저장됩니다. 앱 삭제 시 데이터가 사라짐에 유의하여 주십시오. 추후 내보내기 및 가져오기, 클라우드 연동·동기화 기능을 업데이트할 예정입니다.',
-                  ),
-                ),
                 TextButton(
+                  style: TextButton.styleFrom(alignment: Alignment.centerLeft),
                   onPressed: () async {
                     try {
                       await (await LocalStorage.getInstance()).setBool(
@@ -312,7 +292,26 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                   },
                   child: const Text(
                     '결과 이탈 안내 다시 켜기',
-                    textAlign: TextAlign.center,
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+                const Divider(),
+                const ListTile(
+                  title: Text(
+                    '로또 번호 추천 안내',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    '본 앱은 다양한 번호 선택 조건을 활용할 수 있는 편의를 제공하지만, 이러한 조건들과 과거의 추첨 결과 등은 당첨을 예측하거나 보장하지 않음을 유의하여 주시기 바랍니다.',
+                  ),
+                ),
+                const ListTile(
+                  title: Text(
+                    '저장 안내',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    '저장한 번호 및 설정 등은 앱 내부 저장소에 저장됩니다. 앱 삭제 시 데이터가 사라짐에 유의하여 주십시오. 추후 내보내기 및 가져오기, 클라우드 연동·동기화 기능을 업데이트할 예정입니다.',
                   ),
                 ),
               ],
@@ -322,60 +321,73 @@ class _RecommendationHomeState extends State<RecommendationHome> {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                const Text('몇 게임을 만들까요?', style: TextStyle(fontSize: 22)),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (var n = 1; n <= 5; n++)
-                      ChoiceChip(
-                        label: Text('$n'),
-                        selected: count == n,
-                        onSelected: busy
-                            ? null
-                            : (_) => setState(() => count = n),
+                if (MediaQuery.orientationOf(context) == Orientation.landscape)
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          '몇 게임을 만들까요?',
+                          style: TextStyle(fontSize: 22),
+                        ),
                       ),
-                  ],
-                ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: SelectionTiles(
+                          labels: const ['1', '2', '3', '4', '5'],
+                          columns: 5,
+                          selected: count - 1,
+                          onChanged: busy
+                              ? null
+                              : (i) => setState(() => count = i + 1),
+                        ),
+                      ),
+                    ],
+                  )
+                else ...[
+                  const Text('몇 게임을 만들까요?', style: TextStyle(fontSize: 22)),
+                  const SizedBox(height: 16),
+                  SelectionTiles(
+                    labels: const ['1', '2', '3', '4', '5'],
+                    columns: 5,
+                    selected: count - 1,
+                    onChanged: busy
+                        ? null
+                        : (i) => setState(() => count = i + 1),
+                  ),
+                ],
                 const SizedBox(height: 32),
-                if (!detailed)
-                  const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('완전 랜덤', style: TextStyle(fontSize: 20)),
-                          SizedBox(height: 8),
-                          Text('조건 없이 서로 다른 번호 6개를 생성합니다.'),
-                        ],
-                      ),
+                const Text('번호 생성 방식', style: TextStyle(fontSize: 22)),
+                const SizedBox(height: 16),
+                SelectionTiles(
+                  labels: const ['완전 랜덤', '상세 규칙'],
+                  columns: 2,
+                  selected: detailed ? 1 : 0,
+                  onChanged: busy
+                      ? null
+                      : (i) => setState(() => detailed = i == 1),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          detailed ? '상세 규칙' : '완전 랜덤',
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          detailed
+                              ? '고정수·제외수 등 원하는 규칙을 설정하여 번호를 생성합니다.'
+                              : '조건 없이 서로 다른 번호 6개를 생성합니다.',
+                        ),
+                      ],
                     ),
                   ),
+                ),
                 const SizedBox(height: 24),
-                DrawSource(
-                  round: drawStore.draws.firstOrNull?.round,
-                  status: drawStore.status,
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    ChoiceChip(
-                      label: const Text('완전 랜덤'),
-                      selected: !detailed,
-                      onSelected: busy
-                          ? null
-                          : (_) => setState(() => detailed = false),
-                    ),
-                    ChoiceChip(
-                      label: const Text('상세 규칙'),
-                      selected: detailed,
-                      onSelected: busy
-                          ? null
-                          : (_) => setState(() => detailed = true),
-                    ),
-                  ],
-                ),
                 if (detailed)
                   ListTile(
                     title: Text(
@@ -387,6 +399,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                     trailing: const Icon(Icons.expand_more),
                     onTap: presetStore.items.isEmpty ? null : choose,
                   ),
+                if (detailed) const SizedBox(height: 24),
                 if (detailed && presetStore.items.isNotEmpty)
                   Row(
                     children: [
@@ -437,6 +450,13 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                       textAlign: TextAlign.center,
                     ),
                   ),
+                const SizedBox(height: 32),
+                Center(
+                  child: DrawSource(
+                    round: drawStore.draws.firstOrNull?.round,
+                    status: drawStore.status,
+                  ),
+                ),
               ],
             ),
           ),

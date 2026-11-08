@@ -55,7 +55,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(GameDisplay, skipOffstage: false), findsOneWidget);
       expect(
-        find.text('이 화면에서는 저장한 복권 용지를 실제 종이 복권에 편하게 옮겨 적을 수 있습니다.'),
+        find.text('이 화면은 저장한 복권 번호를 실제 종이 복권에 옮겨 적기 편하도록 만들어진 화면입니다.'),
         findsOneWidget,
       );
       await tester.tap(find.text('확인'));

@@ -57,13 +57,16 @@ class NumberTile extends StatelessWidget {
         border: Border.all(color: colored ? background : scheme.outline),
       ),
       alignment: Alignment.center,
-      child: Text(
-        '$number',
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.bold,
-          color: foreground,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          '$number',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            color: foreground,
+          ),
         ),
       ),
     );
@@ -88,17 +91,18 @@ class NumberGrid extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final side = numberSide(context, fontSize);
-      const gap = 8.0;
+      final gap = fontSize <= 18 ? 4.0 : 8.0;
       final width = constraints.maxWidth;
-      var columns = 2;
-      for (final n in [6, 4, 3, 2]) {
+      var columns = 1;
+      for (final n in [6, 4, 3, 2, 1]) {
         if (n * side + (n - 1) * gap <= width) {
           columns = n;
           break;
         }
       }
-      final contentWidth = math.max(width, 2 * side + gap);
-      final cellWidth = (contentWidth - (columns - 1) * gap) / columns;
+      final actualSide = math.min(side, width);
+      final contentWidth = columns * actualSide + (columns - 1) * gap;
+      final cellWidth = actualSide;
       final rows = <Widget>[];
       for (var start = 0; start < numbers.length; start += columns) {
         final end = math.min(start + columns, numbers.length);
@@ -109,7 +113,7 @@ class NumberGrid extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 for (var i = start; i < end; i++) ...[
-                  if (i > start) const SizedBox(width: gap),
+                  if (i > start) SizedBox(width: gap),
                   SizedBox(
                     width: cellWidth,
                     child: Column(
@@ -119,7 +123,7 @@ class NumberGrid extends StatelessWidget {
                           number: numbers[i],
                           colored: colored,
                           card: card,
-                          side: side,
+                          side: actualSide,
                           fontSize: fontSize,
                         ),
                         if (below != null) below!(numbers[i]),
@@ -136,14 +140,7 @@ class NumberGrid extends StatelessWidget {
         width: contentWidth,
         child: Column(mainAxisSize: MainAxisSize.min, children: rows),
       );
-      // At extreme accessibility scales even two full-size tiles may not fit.
-      // Keep the text readable and allow horizontal scrolling rather than overflow.
-      return contentWidth > width
-          ? SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: content,
-            )
-          : content;
+      return Center(child: content);
     },
   );
 }

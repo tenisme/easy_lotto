@@ -10,14 +10,14 @@ import 'package:easy_lotto/paper_store.dart';
 import 'package:easy_lotto/local_storage.dart';
 
 void main() {
-  testWidgets('bottom navigation opens all four library categories', (
+  testWidgets('bottom navigation opens merged library categories', (
     tester,
   ) async {
     await tester.pumpWidget(const MainApp());
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(NavigationDestination, '보관함'));
     await tester.pumpAndSettle();
-    expect(find.text('내 번호'), findsOneWidget);
+    expect(find.text('내 번호·조합'), findsOneWidget);
     expect(find.text('저장한 설정'), findsOneWidget);
     await tester.tap(find.widgetWithText(NavigationDestination, '더보기'));
     await tester.pumpAndSettle();
@@ -190,6 +190,8 @@ void main() {
     await tester.pumpWidget(const MainApp());
     await tester.tap(find.text('상세 규칙'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('설정 만들기'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('설정 만들기'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('설정 저장'));
@@ -209,6 +211,8 @@ void main() {
   ) async {
     await tester.pumpWidget(const MainApp());
     await tester.tap(find.text('상세 규칙'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('설정 만들기'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('설정 만들기'));
     await tester.pumpAndSettle();
@@ -241,7 +245,17 @@ void main() {
     await tester.tap(find.text('5'));
     await tester.pump();
     expect(
-      tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '5')).selected,
+      tester
+          .widget<Semantics>(
+            find
+                .ancestor(
+                  of: find.widgetWithText(OutlinedButton, '5'),
+                  matching: find.byType(Semantics),
+                )
+                .first,
+          )
+          .properties
+          .selected,
       isTrue,
     );
     expect(find.text('번호 생성'), findsOneWidget);

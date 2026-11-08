@@ -8,6 +8,8 @@ import 'settings_editor.dart';
 import 'exit_guard.dart';
 import 'preset_store.dart';
 import 'persistent_help.dart';
+import 'number_display.dart';
+import 'selection_tiles.dart';
 
 Future<bool> saveResultsToPaper(
   BuildContext context,
@@ -105,7 +107,10 @@ class _PaperEditorState extends State<PaperEditor> {
           children: [
             for (final g in libraryStore.games)
               ListTile(
-                title: Text(g.game.numbers.join(' · ')),
+                title: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: NumberGrid(numbers: g.game.numbers, fontSize: 18),
+                ),
                 onTap: () => Navigator.pop(context, g.game),
               ),
             ListTile(
@@ -198,10 +203,12 @@ class _PaperEditorState extends State<PaperEditor> {
             Card(
               child: Column(
                 children: [
-                  ListTile(
-                    title: Text('게임 ${i + 1}'),
-                    subtitle: Text(games[i].numbers.join(' · ')),
+                  ListTile(title: Text('게임 ${String.fromCharCode(65 + i)}')),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: NumberGrid(numbers: games[i].numbers, fontSize: 18),
                   ),
+
                   Wrap(
                     children: [
                       if (!widget.fromResults)
@@ -339,46 +346,52 @@ class _GameComposerState extends State<GameComposer> {
     body: ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          childAspectRatio: 2.2,
-          children: [
-            for (var m = 0; m < 4; m++)
-              ChoiceChip(
-                label: Text(['직접 선택', '내 번호', '완전 랜덤', '상세 규칙'][m]),
-                selected: mode == m,
-                onSelected: busy
-                    ? null
-                    : (_) async {
-                        setState(() => mode = m);
-                        if (m == 2) await generate();
-                      },
-              ),
-          ],
+        SelectionTiles(
+          labels: const ['직접 선택', '내 번호', '완전 랜덤', '상세 규칙'],
+          columns: 2,
+          selected: mode,
+          onChanged: busy
+              ? null
+              : (m) async {
+                  setState(() => mode = m);
+                  if (m == 2) await generate();
+                },
         ),
+        const SizedBox(height: 16),
         Wrap(
           spacing: 4,
+          runSpacing: 4,
           children: [
             for (var n = 1; n <= 45; n++)
               if (mode != 1 || libraryStore.numbers.contains(n))
-                FilterChip(
-                  showCheckmark: false,
-                  label: Text('$n'),
+                Semantics(
+                  button: true,
                   selected: selected.contains(n),
-                  onSelected:
-                      busy ||
-                          mode >= 2 ||
-                          (!selected.contains(n) && selected.length == 6)
-                      ? null
-                      : (v) => setState(() {
-                          if (v) {
-                            selected.add(n);
-                          } else {
-                            selected.remove(n);
-                          }
-                        }),
+                  label: '$n 번호 선택',
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap:
+                        busy ||
+                            mode >= 2 ||
+                            (!selected.contains(n) && selected.length == 6)
+                        ? null
+                        : () => setState(() {
+                            if (!selected.add(n)) selected.remove(n);
+                          }),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          width: 3,
+                          color: selected.contains(n)
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: NumberTile(number: n, fontSize: 18),
+                    ),
+                  ),
                 ),
           ],
         ),
@@ -403,7 +416,21 @@ class _GameComposerState extends State<GameComposer> {
             child: const Text('설정 수정', textAlign: TextAlign.center),
           ),
         ],
-        Text('선택한 조합: ${(selected.toList()..sort()).join(' · ')}'),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            const Text(
+              '선택한 조합',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            for (final n in (selected.toList()..sort()))
+              NumberTile(number: n, fontSize: 18),
+          ],
+        ),
+        const SizedBox(height: 16),
         if (mode >= 2)
           OutlinedButton(
             onPressed: busy ? null : generate,

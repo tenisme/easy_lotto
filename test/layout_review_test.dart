@@ -143,45 +143,47 @@ void main() {
     },
   );
 
-  testWidgets('extreme scale keeps pairs scrollable instead of overflowing', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(320, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(textScaler: TextScaler.linear(4)),
-          child: Scaffold(
-            body: SingleChildScrollView(
-              child: GameDisplay(
-                label: 'A',
-                numbers: game.numbers,
-                design: PaperDesign.colorBasic,
+  testWidgets(
+    'extreme scale uses six single rows without horizontal scrolling',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(4)),
+            child: Scaffold(
+              body: SingleChildScrollView(
+                child: GameDisplay(
+                  label: 'A',
+                  numbers: game.numbers,
+                  design: PaperDesign.colorBasic,
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    final byY = <double, int>{};
-    for (var i = 0; i < 6; i++) {
-      final y = tester.getCenter(find.byType(NumberTile).at(i)).dy;
-      byY[y] = (byY[y] ?? 0) + 1;
-    }
-    expect(byY.values.toList(), [2, 2, 2]);
-    expect(
-      find.byWidgetPredicate(
-        (w) =>
-            w is SingleChildScrollView && w.scrollDirection == Axis.horizontal,
-      ),
-      findsOneWidget,
-    );
-  });
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      final byY = <double, int>{};
+      for (var i = 0; i < 6; i++) {
+        final y = tester.getCenter(find.byType(NumberTile).at(i)).dy;
+        byY[y] = (byY[y] ?? 0) + 1;
+      }
+      expect(byY.values.toList(), [1, 1, 1, 1, 1, 1]);
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets(
     'style menu opens number editor while background stays placeholder',
@@ -233,7 +235,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final description = find.text('이 용지에만 적용됩니다. 개별 지정이 없는 용지는 기본 디자인을 사용합니다.');
+    tester
+        .widget<RadioGroup<DesignMode>>(find.byType(RadioGroup<DesignMode>))
+        .onChanged(DesignMode.perPaper);
+    await tester.pumpAndSettle();
+    final description = find.text(
+      '이 용지에만 적용되는 디자인을 선택합니다. 개별 지정이 없는 용지는 기본 디자인을 사용합니다.',
+    );
     await tester.scrollUntilVisible(description, 250);
     await tester.pumpAndSettle();
     final text = tester.widget<Text>(description);
@@ -290,56 +298,66 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pageBack();
     await tester.pumpAndSettle();
-    expect(find.text('저장하지 않고 이동'), findsOneWidget);
-    await tester.tap(find.text('저장하지 않고 이동'));
-    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
     expect(find.byType(AppThemeSettings), findsNothing);
     expect((await LocalStorage.getInstance()).getString('appTheme.v1'), isNull);
   });
 
-  testWidgets(
-    'library tab order, color favorites and editable combination tiles',
-    (tester) async {
-      libraryStore.numbers = {1, 11, 21, 31, 41};
-      libraryStore.games = [SavedGame(game, null)];
-      await tester.pumpWidget(const MaterialApp(home: LibraryPage()));
-      await tester.pumpAndSettle();
-      expect(
-        tester.widgetList<Tab>(find.byType(Tab)).map((t) => t.text).toList(),
-        ['복권 용지', '저장한 조합', '내 번호', '저장한 설정'],
-      );
-      expect(find.text('새 복권 용지'), findsOneWidget);
-      await tester.tap(find.text('내 번호'));
-      await tester.pumpAndSettle();
-      expect(find.byType(NumberTile), findsNWidgets(5));
-      expect(
-        tester
-            .widgetList<NumberTile>(find.byType(NumberTile))
-            .every((n) => n.colored && !n.card),
-        isTrue,
-      );
-      await tester.tap(find.text('1'));
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<Semantics>(
-              find.byWidgetPredicate(
-                (w) => w is Semantics && w.properties.label == '1 번호 선택',
-              ),
-            )
-            .properties
-            .selected,
-        true,
-      );
-      await tester.tap(find.text('저장한 조합'));
-      await tester.pumpAndSettle();
-      expect(find.text('조합을 누르면 번호를 수정할 수 있습니다.'), findsOneWidget);
-      expect(find.byType(NumberTile), findsNWidgets(6));
-      await tester.tap(find.byType(NumberTile).first);
-      await tester.pumpAndSettle();
-      expect(find.byType(GameComposer), findsOneWidget);
-    },
-  );
+  testWidgets('merged library colors, selection and edit remain independent', (
+    tester,
+  ) async {
+    libraryStore.numbers = {1, 11, 21, 31, 41};
+    libraryStore.games = [SavedGame(game, null)];
+    await tester.pumpWidget(const MaterialApp(home: LibraryPage()));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widgetList<Tab>(find.byType(Tab)).map((t) => t.text).toList(),
+      ['복권 용지', '내 번호·조합', '저장한 설정'],
+    );
+    await tester.tap(find.text('내 번호·조합'));
+    await tester.pumpAndSettle();
+    expect(find.byType(NumberTile), findsNWidgets(11));
+    expect(
+      tester
+          .widgetList<NumberTile>(find.byType(NumberTile))
+          .every((n) => n.colored && !n.card),
+      isTrue,
+    );
+    await tester.tap(find.byType(NumberTile).first);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<Semantics>(
+            find.byWidgetPredicate(
+              (w) => w is Semantics && w.properties.label == '1 번호 선택',
+            ),
+          )
+          .properties
+          .selected,
+      true,
+    );
+    await tester.ensureVisible(find.text('이 조합 선택'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('이 조합 선택'));
+    await tester.pumpAndSettle();
+    expect(find.byType(GameComposer), findsNothing);
+    expect(
+      tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+      true,
+    );
+    await tester.ensureVisible(find.byType(NumberGrid));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(NumberGrid),
+            matching: find.byType(NumberTile),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(GameComposer), findsOneWidget);
+  });
 
   testWidgets('ordering arrows use one horizontal row', (tester) async {
     await tester.pumpWidget(

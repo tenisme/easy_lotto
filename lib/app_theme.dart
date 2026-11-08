@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'local_storage.dart';
 import 'banner_scaffold.dart';
-import 'exit_guard.dart';
 
 class AppThemeController extends ChangeNotifier {
   bool _disposed = false;
@@ -94,77 +93,75 @@ class _AppThemeSettingsState extends State<AppThemeSettings> {
   Widget build(BuildContext context) {
     final controller = AppThemeScope.of(context);
     final selected = draft ?? controller.mode;
-    return ExitGuard(
-      needsConfirmation: selected != controller.mode,
-      message: '저장하지 않은 테마 선택을 취소하고 이동하시겠습니까?',
-      child: BannerScaffold(
-        appBar: AppBar(
-          title: const FittedBox(fit: BoxFit.scaleDown, child: Text('앱 테마 설정')),
-        ),
-        bottomNavigationBar: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: FilledButton(
-              onPressed: controller.busy
-                  ? null
-                  : () async {
-                      final saved = await controller.select(selected);
-                      if (!context.mounted) return;
-                      if (saved) {
-                        Navigator.pop(context, true);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('앱 테마를 저장하지 못했습니다.')),
-                        );
-                      }
-                    },
-              child: const Text('저장', textAlign: TextAlign.center),
-            ),
+    return BannerScaffold(
+      appBar: AppBar(
+        title: const FittedBox(fit: BoxFit.scaleDown, child: Text('앱 테마 설정')),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: FilledButton(
+            onPressed: controller.busy
+                ? null
+                : () async {
+                    final saved = await controller.select(selected);
+                    if (!context.mounted) return;
+                    if (saved) {
+                      Navigator.pop(context, true);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('앱 테마를 저장하지 못했습니다.')),
+                      );
+                    }
+                  },
+            child: const Text('저장', textAlign: TextAlign.center),
           ),
         ),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            const Text('테마를 선택한 뒤 저장하면 앱 전체에 적용됩니다.'),
-            if (controller.loadFailed)
-              TextButton(
-                onPressed: controller.load,
-                child: const Text('테마 다시 불러오기', textAlign: TextAlign.center),
-              ),
-            RadioGroup<ThemeMode>(
-              groupValue: selected,
-              onChanged: (value) {
-                if (!controller.busy) setState(() => draft = value);
-              },
-              child: Column(
-                children: [
-                  for (final mode in [
-                    ThemeMode.light,
-                    ThemeMode.dark,
-                    ThemeMode.system,
-                  ])
-                    Card(
-                      child: Column(
-                        children: [
-                          RadioListTile<ThemeMode>(
-                            value: mode,
-                            title: Text(themeLabel(mode)),
-                            subtitle: controller.mode == mode
-                                ? const Text('현재 적용 중')
-                                : null,
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: ThemeMiniPreview(mode: mode),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text('테마를 선택한 뒤 저장하면 앱 전체에 적용됩니다.'),
+          if (controller.loadFailed)
+            TextButton(
+              onPressed: controller.load,
+              child: const Text('테마 다시 불러오기', textAlign: TextAlign.center),
             ),
-          ],
-        ),
+          RadioGroup<ThemeMode>(
+            groupValue: selected,
+            onChanged: (value) {
+              if (!controller.busy) setState(() => draft = value);
+            },
+            child: Column(
+              children: [
+                for (final mode in [
+                  ThemeMode.light,
+                  ThemeMode.dark,
+                  ThemeMode.system,
+                ])
+                  Card(
+                    child: Column(
+                      children: [
+                        RadioListTile<ThemeMode>(
+                          dense: true,
+                          visualDensity: const VisualDensity(vertical: -4),
+                          value: mode,
+                          title: Text(themeLabel(mode)),
+                          subtitle: controller.mode == mode
+                              ? const Text('현재 적용 중')
+                              : null,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: ThemeMiniPreview(mode: mode),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

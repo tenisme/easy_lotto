@@ -1,3 +1,4 @@
+import 'selection_tiles.dart';
 import 'package:flutter/material.dart';
 import 'banner_scaffold.dart';
 import 'package:flutter/foundation.dart';
@@ -517,22 +518,10 @@ class _SettingsEditorState extends State<SettingsEditor> {
                 onChanged: (v) => setState(() => sum = v),
               ),
               const Text('연속수'),
-              Wrap(
-                spacing: 4,
-                children: [
-                  for (final g in <int?>[0, 1, 2, 3, null])
-                    ChoiceChip(
-                      label: Text(
-                        g == null
-                            ? '제한 없음'
-                            : g == 0
-                            ? '제외'
-                            : '$g묶음',
-                      ),
-                      selected: groups == g,
-                      onSelected: (_) => setState(() => groups = g),
-                    ),
-                ],
+              SelectionTiles(
+                labels: const ['제외', '1묶음', '2묶음', '3묶음', '제한 없음'],
+                selected: groups ?? 4,
+                onChanged: (i) => setState(() => groups = i == 4 ? null : i),
               ),
               if (groups == 1 || groups == 2)
                 DropdownButtonFormField<String>(
@@ -588,24 +577,32 @@ class _SettingsEditorState extends State<SettingsEditor> {
                   onChanged: (v) => setState(() => missing = v == 0 ? null : v),
                 ),
                 const Text('미출현 기준 기간'),
+                SelectionTiles(
+                  labels: const ['최근 1회', '최근 5회', '최근 10회'],
+                  selected: [1, 5, 10].indexOf(missingRounds),
+                  disabled: {
+                    for (var i = 0; i < 3; i++)
+                      if ([1, 5, 10][i] > availablePeriods) i,
+                  },
+                  onChanged: (i) =>
+                      setState(() => missingRounds = [1, 5, 10][i]),
+                ),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    for (final n in [1, 5, 10])
-                      ChoiceChip(
-                        label: Text('최근 $n회'),
-                        selected: missingRounds == n,
-                        onSelected: n > availablePeriods
-                            ? null
-                            : (_) => setState(() => missingRounds = n),
-                      ),
                     for (final n in ({
                       ...customRounds,
                       if (![1, 5, 10].contains(missingRounds)) missingRounds,
                     }.toList()..sort()))
                       if (![1, 5, 10].contains(n))
                         InputChip(
-                          label: Text('최근 $n회'),
+                          showCheckmark: false,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          label: Text('최근 $n회', textAlign: TextAlign.center),
                           selected: missingRounds == n,
                           onPressed: n > availablePeriods
                               ? null

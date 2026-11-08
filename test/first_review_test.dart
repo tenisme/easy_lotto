@@ -76,7 +76,14 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: PaperEditor(paper: paper)));
     await tester.tap(find.text('교체'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(a.numbers.join(' · ')).last);
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(BottomSheet),
+            matching: find.text('${a.numbers.first}'),
+          )
+          .first,
+    );
     await tester.pumpAndSettle();
     expect(find.text('현재 게임과 같은 번호 조합으로는 교체할 수 없습니다.'), findsOneWidget);
     expect(find.text('이 게임을 교체하시겠습니까?'), findsNothing);
@@ -142,14 +149,7 @@ void main() {
         const MaterialApp(home: DesignSettings(paperId: 'b')),
       );
       await tester.pumpAndSettle();
-      expect(
-        tester
-            .widgetList<RadioListTile<PaperDesign>>(
-              find.byType(RadioListTile<PaperDesign>),
-            )
-            .every((c) => c.enabled == false),
-        isTrue,
-      );
+      expect(find.byType(RadioGroup<PaperDesign>), findsNothing);
       await tester.scrollUntilVisible(find.byType(RadioGroup<int>), 200);
       tester
           .widget<RadioGroup<int>>(find.byType(RadioGroup<int>))

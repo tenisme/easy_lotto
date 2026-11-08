@@ -67,7 +67,9 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
             '번호 크게 보기',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          content: const Text('이 화면에서는 저장한 복권 용지를 실제 종이 복권에 편하게 옮겨 적을 수 있습니다.'),
+          content: const Text(
+            '이 화면은 저장한 복권 번호를 실제 종이 복권에 옮겨 적기 편하도록 만들어진 화면입니다.',
+          ),
           actions: [
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
@@ -507,8 +509,10 @@ class _DesignSettingsState extends State<DesignSettings> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                const Text('앱 테마를 따릅니다. 번호 칸 디자인을 선택합니다.'),
-                const Text('적용 방식'),
+                const Text(
+                  '디자인 적용 방식',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
                 RadioGroup<DesignMode>(
                   groupValue: mode,
                   onChanged: (m) {
@@ -523,6 +527,9 @@ class _DesignSettingsState extends State<DesignSettings> {
                     children: [
                       for (final m in DesignMode.values)
                         RadioListTile<DesignMode>(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: const VisualDensity(vertical: -4),
                           enabled: !saving,
                           value: m,
                           title: Text(
@@ -533,8 +540,12 @@ class _DesignSettingsState extends State<DesignSettings> {
                     ],
                   ),
                 ),
-                const Text('랜덤을 사용해도 이전 디자인 설정은 유지됩니다.'),
-                if (mode == DesignMode.random)
+
+                if (mode == DesignMode.random) ...[
+                  const Text(
+                    '랜덤 디자인 적용 영역',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
                   RadioGroup<bool>(
                     groupValue: randomAll,
                     onChanged: saving
@@ -543,66 +554,101 @@ class _DesignSettingsState extends State<DesignSettings> {
                     child: const Column(
                       children: [
                         RadioListTile<bool>(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: VisualDensity(vertical: -4),
                           value: true,
                           title: Text('전체 용지에 적용'),
                         ),
                         RadioListTile<bool>(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: VisualDensity(vertical: -4),
                           value: false,
                           title: Text('현재 용지에만 적용'),
                         ),
                       ],
                     ),
                   ),
-                const Text('기본 디자인 · 모든 용지 공통'),
-                RadioGroup<PaperDesign>(
-                  groupValue: base,
-                  onChanged: (v) {
-                    if (!saving && mode == DesignMode.basic) {
-                      setState(() => base = v!);
-                    }
-                  },
-                  child: Column(
-                    children: [
-                      for (final s in PaperDesign.values)
-                        RadioListTile<PaperDesign>(
-                          enabled: !saving && mode == DesignMode.basic,
-                          value: s,
-                          title: Text(designNames[s.index], softWrap: true),
-                        ),
-                    ],
+                ],
+                if (mode == DesignMode.basic) ...[
+                  const Text(
+                    '기본 디자인 선택',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                ),
-                const Text('이 용지의 디자인'),
-                const Text('이 용지에만 적용됩니다. 개별 지정이 없는 용지는 기본 디자인을 사용합니다.'),
-                RadioGroup<int>(
-                  groupValue: paperDesign?.index ?? -1,
-                  onChanged: (v) {
-                    if (!saving && mode == DesignMode.perPaper) {
-                      setState(
-                        () => paperDesign = v == -1
-                            ? null
-                            : PaperDesign.values[v!],
-                      );
-                    }
-                  },
-                  child: Column(
-                    children: [
-                      RadioListTile<int>(
-                        enabled: !saving && mode == DesignMode.perPaper,
-                        value: -1,
-                        title: const Text('기본 디자인 사용'),
-                      ),
-                      for (final s in PaperDesign.values)
+                  const Text('기본 디자인은 모든 용지에 기본적으로 적용됩니다'),
+                  RadioGroup<PaperDesign>(
+                    groupValue: base,
+                    onChanged: (v) {
+                      if (!saving && mode == DesignMode.basic) {
+                        setState(() => base = v!);
+                      }
+                    },
+                    child: Column(
+                      children: [
+                        for (final s in PaperDesign.values)
+                          RadioListTile<PaperDesign>(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            visualDensity: const VisualDensity(vertical: -4),
+                            enabled: !saving && mode == DesignMode.basic,
+                            value: s,
+                            title: Text(designNames[s.index], softWrap: true),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (mode == DesignMode.perPaper) ...[
+                  const Text(
+                    '용지별 디자인 선택',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const Text(
+                    '이 용지에만 적용되는 디자인을 선택합니다. 개별 지정이 없는 용지는 기본 디자인을 사용합니다.',
+                  ),
+                  RadioGroup<int>(
+                    groupValue: paperDesign?.index ?? -1,
+                    onChanged: (v) {
+                      if (!saving && mode == DesignMode.perPaper) {
+                        setState(
+                          () => paperDesign = v == -1
+                              ? null
+                              : PaperDesign.values[v!],
+                        );
+                      }
+                    },
+                    child: Column(
+                      children: [
                         RadioListTile<int>(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: const VisualDensity(vertical: -4),
                           enabled: !saving && mode == DesignMode.perPaper,
-                          value: s.index,
-                          title: Text(designNames[s.index], softWrap: true),
+                          value: -1,
+                          title: const Text('기본 디자인 사용'),
                         ),
-                    ],
+                        for (final s in PaperDesign.values)
+                          RadioListTile<int>(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            visualDensity: const VisualDensity(vertical: -4),
+                            enabled: !saving && mode == DesignMode.perPaper,
+                            value: s.index,
+                            title: Text(designNames[s.index], softWrap: true),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
                 if (mode == DesignMode.random && !randomAll)
                   const Text('전체 랜덤이 해제됩니다. 다른 용지는 기존 설정으로 돌아갑니다.'),
+                const SizedBox(height: 24),
+                const Text(
+                  '번호 칸 디자인 예시',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
                 for (final s in PaperDesign.values) ...[
                   Text(designNames[s.index]),
                   GameDisplay(
