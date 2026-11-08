@@ -158,6 +158,9 @@ class _CollectionOrderState<T> extends State<CollectionOrder<T>> {
     return Column(
       children: [
         DropdownButtonFormField<String>(
+          isExpanded: true,
+          isDense: false,
+          itemHeight: null,
           key: ValueKey(mode),
           initialValue: mode,
           decoration: const InputDecoration(labelText: '정렬'),
@@ -181,8 +184,14 @@ class _CollectionOrderState<T> extends State<CollectionOrder<T>> {
                 ),
         ),
         const SizedBox(height: 16),
-        if (widget.belowSort != null) widget.belowSort!,
-        if (mode == 'manual') const Text('화살표로 순서를 변경합니다.'),
+        if (widget.belowSort != null) ...[
+          widget.belowSort!,
+          const SizedBox(height: 16),
+        ],
+        if (mode == 'manual') ...[
+          const Text('화살표로 순서를 변경합니다.', textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+        ],
         for (var i = 0; i < items.length; i++)
           if (widget.inlineBuilder != null)
             widget.inlineBuilder!(

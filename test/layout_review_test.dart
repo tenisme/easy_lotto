@@ -128,7 +128,10 @@ void main() {
         2 * side + 8 + 1: [2, 2, 2],
       };
       for (final entry in cases.entries) {
-        await show(entry.key);
+        await show(
+          entry.key /
+              numberAreaFraction(tester.element(find.byType(NumberGrid))),
+        );
         final byY = <double, List<Offset>>{};
         for (var i = 0; i < 6; i++) {
           final center = tester.getCenter(find.byType(NumberTile).at(i));
@@ -336,15 +339,21 @@ void main() {
           .selected,
       true,
     );
-    await tester.ensureVisible(find.text('이 조합 선택'));
+    await tester.scrollUntilVisible(
+      find.byType(Checkbox),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const PageStorageKey('number-combination-list')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('이 조합 선택'));
+    await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
     expect(find.byType(GameComposer), findsNothing);
-    expect(
-      tester.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
-      true,
-    );
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, true);
     await tester.ensureVisible(find.byType(NumberGrid));
     await tester.pumpAndSettle();
     await tester.tap(

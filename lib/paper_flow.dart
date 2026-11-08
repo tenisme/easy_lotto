@@ -32,7 +32,7 @@ Future<bool> saveResultsToPaper(
                 icon: const Icon(Icons.help_outline),
                 onPressed: () => showPersistentHelp(
                   helpContext,
-                  '이미 5게임이 채워진 복권 용지는 이 화면에 표시되지 않습니다.\n\n기존 복권 용지에 남는 자리가 없는 경우, 선택한 게임 수를 줄이거나 새 복권 용지를 만들어 주십시오.',
+                  '이미 5게임이 채워진 복권 용지는 이 화면에 표시되지 않습니다.\n기존 복권 용지에 남는 자리가 없는 경우, 선택한 게임 수를 줄이거나 새 복권 용지를 만들어 주십시오.',
                 ),
               ),
             ),
@@ -203,9 +203,21 @@ class _PaperEditorState extends State<PaperEditor> {
             Card(
               child: Column(
                 children: [
-                  ListTile(title: Text('게임 ${String.fromCharCode(65 + i)}')),
                   Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '게임 ${String.fromCharCode(65 + i)}',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
                     child: NumberGrid(numbers: games[i].numbers, fontSize: 18),
                   ),
 
@@ -340,62 +352,68 @@ class _GameComposerState extends State<GameComposer> {
     }
   }
 
+  Future<void> chooseMode(int next) async {
+    setState(() => mode = next);
+    if (next == 2) await generate();
+  }
+
   @override
   Widget build(BuildContext context) => BannerScaffold(
     appBar: AppBar(title: const Text('조합 추가')),
     body: ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        SelectionTiles(
-          labels: const ['직접 선택', '내 번호', '완전 랜덤', '상세 규칙'],
-          columns: 2,
-          selected: mode,
-          onChanged: busy
-              ? null
-              : (m) async {
-                  setState(() => mode = m);
-                  if (m == 2) await generate();
-                },
-        ),
+        if (MediaQuery.orientationOf(context) == Orientation.landscape)
+          SelectionTiles(
+            labels: const ['직접 선택', '완전 랜덤', '상세 규칙'],
+            columns: 3,
+            selected: mode == 0
+                ? 0
+                : mode == 2
+                ? 1
+                : 2,
+            onChanged: busy ? null : (i) => chooseMode([0, 2, 3][i]),
+          )
+        else ...[
+          SelectionTiles(
+            labels: const ['직접 선택'],
+            columns: 1,
+            selected: mode == 0 ? 0 : -1,
+            onChanged: busy ? null : (_) => chooseMode(0),
+          ),
+          const SizedBox(height: 8),
+          SelectionTiles(
+            labels: const ['완전 랜덤', '상세 규칙'],
+            columns: 2,
+            selected: mode == 2
+                ? 0
+                : mode == 3
+                ? 1
+                : -1,
+            onChanged: busy ? null : (i) => chooseMode(i + 2),
+          ),
+        ],
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 4,
-          runSpacing: 4,
-          children: [
-            for (var n = 1; n <= 45; n++)
-              if (mode != 1 || libraryStore.numbers.contains(n))
-                Semantics(
-                  button: true,
-                  selected: selected.contains(n),
-                  label: '$n 번호 선택',
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap:
-                        busy ||
-                            mode >= 2 ||
-                            (!selected.contains(n) && selected.length == 6)
-                        ? null
-                        : () => setState(() {
-                            if (!selected.add(n)) selected.remove(n);
-                          }),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          width: 3,
-                          color: selected.contains(n)
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.transparent,
-                        ),
-                      ),
-                      child: NumberTile(number: n, fontSize: 18),
-                    ),
-                  ),
-                ),
-          ],
+        ListenableBuilder(
+          listenable: libraryStore,
+          builder: (context, _) => NumberPickerGrid(
+            numbers: List.generate(45, (i) => i + 1),
+            selected: selected,
+            favorites: libraryStore.numbers,
+            disabled: {
+              if (busy || mode >= 2)
+                ...List.generate(45, (i) => i + 1)
+              else if (selected.length == 6)
+                ...List.generate(
+                  45,
+                  (i) => i + 1,
+                ).where((n) => !selected.contains(n)),
+            },
+            onToggle: (n) => setState(() {
+              if (!selected.add(n)) selected.remove(n);
+            }),
+          ),
         ),
-        if (mode == 1) const Text('부족한 번호는 직접 선택에서 채울 수 있습니다.'),
         if (mode == 3) ...[
           if (presetStore.items.isNotEmpty)
             DropdownButtonFormField<String>(
@@ -417,19 +435,37 @@ class _GameComposerState extends State<GameComposer> {
           ),
         ],
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            const Text(
-              '선택한 조합',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            for (final n in (selected.toList()..sort()))
-              NumberTile(number: n, fontSize: 18),
-          ],
-        ),
+        if (MediaQuery.orientationOf(context) == Orientation.landscape)
+          Row(
+            children: [
+              const Flexible(
+                flex: 2,
+                child: Text(
+                  '선택한 조합',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 5,
+                child: SelectedNumberPreview(
+                  key: const ValueKey('selected-number-preview'),
+                  numbers: selected.toList()..sort(),
+                ),
+              ),
+            ],
+          )
+        else ...[
+          const Text(
+            '선택한 조합',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          SelectedNumberPreview(
+            key: const ValueKey('selected-number-preview'),
+            numbers: selected.toList()..sort(),
+          ),
+        ],
         const SizedBox(height: 16),
         if (mode >= 2)
           OutlinedButton(

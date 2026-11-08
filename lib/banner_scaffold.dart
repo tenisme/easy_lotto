@@ -74,7 +74,18 @@ class BannerScaffold extends StatelessWidget {
   final Widget? body, bottomNavigationBar;
   final bool showBanner;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Theme(
+    data: Theme.of(context).copyWith(
+      appBarTheme: Theme.of(context).appBarTheme.copyWith(
+        titleTextStyle: Theme.of(
+          context,
+        ).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.bold),
+      ),
+    ),
+    child: Builder(builder: buildScaffold),
+  );
+
+  Widget buildScaffold(BuildContext context) {
     if (!showBanner) {
       return Scaffold(
         appBar: appBar,

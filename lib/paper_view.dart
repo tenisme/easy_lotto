@@ -513,6 +513,7 @@ class _DesignSettingsState extends State<DesignSettings> {
                   '디자인 적용 방식',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
+                const SizedBox(height: 12),
                 RadioGroup<DesignMode>(
                   groupValue: mode,
                   onChanged: (m) {
@@ -541,11 +542,13 @@ class _DesignSettingsState extends State<DesignSettings> {
                   ),
                 ),
 
+                const SizedBox(height: 24),
                 if (mode == DesignMode.random) ...[
                   const Text(
                     '랜덤 디자인 적용 영역',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 12),
                   RadioGroup<bool>(
                     groupValue: randomAll,
                     onChanged: saving
@@ -577,6 +580,7 @@ class _DesignSettingsState extends State<DesignSettings> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const Text('기본 디자인은 모든 용지에 기본적으로 적용됩니다'),
+                  const SizedBox(height: 12),
                   RadioGroup<PaperDesign>(
                     groupValue: base,
                     onChanged: (v) {
@@ -607,6 +611,7 @@ class _DesignSettingsState extends State<DesignSettings> {
                   const Text(
                     '이 용지에만 적용되는 디자인을 선택합니다. 개별 지정이 없는 용지는 기본 디자인을 사용합니다.',
                   ),
+                  const SizedBox(height: 12),
                   RadioGroup<int>(
                     groupValue: paperDesign?.index ?? -1,
                     onChanged: (v) {

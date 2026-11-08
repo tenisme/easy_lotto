@@ -267,7 +267,10 @@ class _RecommendationHomeState extends State<RecommendationHome> {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                const Text('더보기', style: TextStyle(fontSize: 24)),
+                const Text(
+                  '더보기',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
                 const AppThemePicker(),
                 TextButton(
                   style: TextButton.styleFrom(alignment: Alignment.centerLeft),
@@ -387,7 +390,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: detailed ? 16 : 24),
                 if (detailed)
                   ListTile(
                     title: Text(
@@ -399,7 +402,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                     trailing: const Icon(Icons.expand_more),
                     onTap: presetStore.items.isEmpty ? null : choose,
                   ),
-                if (detailed) const SizedBox(height: 24),
+                if (detailed) const SizedBox(height: 16),
                 if (detailed && presetStore.items.isNotEmpty)
                   Row(
                     children: [
@@ -630,8 +633,15 @@ class _RecommendationResultsState extends State<RecommendationResults> {
               ],
               for (var i = 0; i < games.length; i++)
                 Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 8 / 3,
+                  ),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 32 / 3,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

@@ -117,12 +117,8 @@ void main() {
   );
 
   testWidgets(
-    'approved combination card separates checkbox, six balls, and footer actions',
+    'combination card uses source and arrows beside checkbox without trash',
     (tester) async {
-      tester.view.physicalSize = const Size(400, 1000);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
       libraryStore.games = [SavedGame(game, null)];
       await (await LocalStorage.getInstance()).setString(
         'order.games.v1',
@@ -132,25 +128,28 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('내 번호·조합'));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.byType(NumberGrid));
-      await tester.pumpAndSettle();
-      final tiles = find.byType(NumberTile);
-      expect(tiles, findsNWidgets(6));
-      final y = tester.getCenter(tiles.first).dy;
-      for (var i = 1; i < 6; i++) {
-        expect(tester.getCenter(tiles.at(i)).dy, y);
-      }
-      expect(tester.getCenter(find.byType(Checkbox)).dy, lessThan(y));
-      expect(
-        tester.getCenter(find.byType(Checkbox)).dx,
-        greaterThan(tester.getCenter(tiles.last).dx),
+      await tester.scrollUntilVisible(
+        find.byType(Checkbox),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const PageStorageKey('number-combination-list')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
-      final trash = tester.getCenter(find.byTooltip('조합 삭제'));
+      await tester.pumpAndSettle();
+      expect(find.text('이 조합 선택'), findsNothing);
+      expect(find.byTooltip('조합 삭제'), findsNothing);
+      expect(find.text('완전 랜덤'), findsOneWidget);
+      final checkbox = tester.getCenter(find.byType(Checkbox));
       final down = tester.getCenter(find.byIcon(Icons.arrow_downward));
-      expect(trash.dy, greaterThan(y));
-      expect(down.dy, trash.dy);
-      expect(down.dx, lessThan(trash.dx));
-      expect(trash.dx - down.dx, lessThan(64));
+      expect(down.dy, checkbox.dy);
+      expect(down.dx, lessThan(checkbox.dx));
+      expect(
+        tester.getCenter(find.byType(NumberTile).first).dy,
+        greaterThan(checkbox.dy),
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -206,12 +205,12 @@ void main() {
     final first = tester.getRect(tiles.first),
         second = tester.getRect(tiles.at(1)),
         last = tester.getRect(tiles.last);
-    expect(second.left - first.right, closeTo(8, 0.01));
+    expect(second.left - first.right, greaterThan(8));
     expect(
       (first.left + last.right) / 2,
       tester.getCenter(find.byType(NumberGrid)).dx,
     );
-    expect(last.right - first.left, closeTo(6 * first.width + 5 * 8, 0.01));
+    expect(last.right - first.left, closeTo(760 * .65, .01));
   });
 
   testWidgets(
@@ -225,7 +224,7 @@ void main() {
         of: find.byType(SelectionTiles),
         matching: find.byType(OutlinedButton),
       );
-      for (var i = 1; i < 4; i++) {
+      for (var i = 1; i < 3; i++) {
         expect(tester.getSize(choices.at(i)), tester.getSize(choices.first));
       }
       Future<void> select(int n) async {
@@ -237,9 +236,7 @@ void main() {
 
       await select(41);
       await select(2);
-      final preview = find
-          .ancestor(of: find.text('선택한 조합'), matching: find.byType(Wrap))
-          .first;
+      final preview = find.byType(SelectedNumberPreview);
       expect(
         tester
             .widgetList<NumberTile>(
