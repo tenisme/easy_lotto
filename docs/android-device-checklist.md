@@ -4,9 +4,25 @@
 
 사용자 확인 정책: APK 요청에는 기존 `codex/recommendation-foundation` 브랜치로 필요한 수정 업로드와 GitHub Actions 빌드를 함께 포함한다. 별도 업로드 요청은 필요하지 않으며 권한 차단 시에만 확인한다. main 병합·정식 릴리스·스토어 게시는 포함하지 않는다.
 
-후속 [2026-11-09 배지·간격·보관함 개선](ui-revision-2026-11-09.md)은 코드에만 반영하며 아래 `0.1.5-preview` APK에는 아직 포함되지 않는다. 다음 APK 요청 시 새 빌드를 제공한다.
+## 최신 업데이트 APK (0.1.6-preview)
 
-## 최신 업데이트 APK (0.1.5-preview)
+사용자 요청으로 [2026-11-09 배지·간격·보관함 개선](ui-revision-2026-11-09.md)을 포함한 APK를 생성·다운로드 검증했다. 하트 배지, 회전별 번호 영역 비율, 조합 카드·일괄 삭제·하단 고정 버튼, 번호 추가 팝업과 간격 개선이 포함된다.
+
+- 소스 커밋: `770effc`
+- 버전: `0.1.6-preview` (versionCode 7)
+- 앱 이름/패키지 유지: `Easy Lotto 2차 테스트`, `com.example.easy_lotto.preview2`
+- [빌드 실행](https://github.com/tenisme/easy_lotto/actions/runs/42514204330)
+- [최신 APK ZIP 다운로드](https://github.com/tenisme/easy_lotto/actions/runs/42514204330/artifacts/13630771862): 압축 해제 후 `app-debug.apk` 설치. GitHub 로그인이 필요할 수 있다.
+- CI 정적 분석·106개 테스트·APK 빌드 성공. 실제 다운로드의 ZIP 무결성·SHA-256, APK 패키지·버전·최소 SDK 24·v2 서명·16KiB 정렬을 검증했다. Flutter 실행 라이브러리는 ARM64용이다.
+- 인증서 SHA-256: `a2143aaee266c2ac6321ca977827ab4bf1640dc92d7bb487c14926f76e294f23`. 이전 2차 APK와 동일하다.
+- APK SHA-256: `4b7bdc2075a20a8fb629d458b01a4bfe1b0860899b1a18d1a2f1a9cfb7fa3b43`.
+- ZIP SHA-256: `7f311131c32e09e749b793d58598e19007c20e253b71332ecb355bff9724d2fe`. GitHub artifact digest와 일치한다.
+- APK 86,491,611바이트(약 82.5MiB), ZIP 51,299,613바이트(약 48.9MiB).
+- ZIP 보관 만료: 2026-11-23 04:21 한국 시간.
+- 기존 2차 앱을 삭제하지 않고 업데이트 설치한다. 휴대폰 설치 화면에서 실패하면 이전에 성공했던 Windows ADB 방식으로 `adb install -r "APK의 전체 경로"`를 사용하고 오류를 확인한다.
+- 기기에서는 번호 영역의 세로 85%·가로 65%, 배지 크기·색, 하단 고정 버튼, 일괄 삭제·용지 번호 보존, 번호 추가 팝업과 최대 확대를 확인한다. 자동 검사와 서명 검증은 실제 기기 설치·실행 검증을 대신하지 않는다.
+
+## 이전 업데이트 APK (0.1.5-preview)
 
 사용자 요청으로 [2026-11-08 UI 수정](ui-revision-2026-11-08.md)을 포함한 APK를 생성·다운로드 검증했다. 통합 보관함, 조합 카드 선택/작업 아이콘 분리, 정렬, 컬러 번호 칸, 디자인 하위 옵션, 확대·가로 배치와 추천·더보기 변경이 포함된다.
 
