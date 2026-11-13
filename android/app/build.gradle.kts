@@ -30,7 +30,23 @@ android {
         versionName = flutter.versionName
     }
 
+    // CI uses this exact path instead of AGP's version-dependent default path.
+    signingConfigs {
+        getByName("debug") {
+            System.getenv("EASY_LOTTO_PREVIEW_KEYSTORE")?.let { path ->
+                storeFile = file(path)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix = ".preview2"
+            versionNameSuffix = "-preview"
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
