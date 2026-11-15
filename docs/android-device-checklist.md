@@ -2,11 +2,29 @@
 
 대상: ARM64 Android 7.0(API 24) 이상 기기. 테스트 APK는 디버그 서명이며 정식 스토어 배포용이 아니다.
 
-후속 [번호 관리·설정 이름·디자인 정책 수정](settings-design-policy-review.md)은 현재 코드에만 반영되어 있다. 아래 `0.1.6-preview` 다운로드에는 포함되지 않으며 다음 APK 요청 시 새 빌드로 제공한다.
+최신 [번호 관리·설정 이름·디자인 정책 수정](settings-design-policy-review.md)은 아래 `0.1.7-preview` APK에 포함되어 있다.
 
 사용자 확인 정책: APK 요청에는 기존 `codex/recommendation-foundation` 브랜치로 필요한 수정 업로드와 GitHub Actions 빌드를 함께 포함한다. 별도 업로드 요청은 필요하지 않으며 권한 차단 시에만 확인한다. main 병합·정식 릴리스·스토어 게시는 포함하지 않는다.
 
-## 최신 업데이트 APK (0.1.6-preview)
+## 최신 업데이트 APK (0.1.7-preview)
+
+내 번호 관리 팝업의 두 상태, 붉은 하트 배지, 가로 번호 영역 82%, 생성 당시 설정 이름 보존, 기본·개별 랜덤과 유지·덮어쓰기, 스타일 초기화를 포함한다.
+
+- 소스 커밋: `a891923`
+- 버전: `0.1.7-preview` (versionCode 8)
+- 앱 이름/패키지 유지: `Easy Lotto 2차 테스트`, `com.example.easy_lotto.preview2`
+- [빌드 실행](https://github.com/tenisme/easy_lotto/actions/runs/43695115651)
+- [최신 APK ZIP 다운로드](https://github.com/tenisme/easy_lotto/actions/runs/43695115651/artifacts/14154520069): 압축 해제 후 `app-debug.apk` 설치. GitHub 로그인이 필요할 수 있다.
+- CI 정적 분석·120개 테스트·APK 빌드 성공. 다운로드한 ZIP 무결성·SHA-256, APK 패키지·버전·최소 SDK 24·v2 서명·16KiB 정렬을 검증했다. Flutter 실행 라이브러리는 ARM64용이다.
+- 인증서 SHA-256: `a2143aaee266c2ac6321ca977827ab4bf1640dc92d7bb487c14926f76e294f23`. 이전 2차 APK와 동일하다.
+- APK SHA-256: `f8f21f26ad87fe59b844ed16edf60e17323191bb5bd1d1f73e92da5046ef1c49`.
+- ZIP SHA-256: `349f485a0933de483843fac9f8c812f71ba78de4692cfa7a24922b3f2a6edb9c`. GitHub artifact digest와 일치한다.
+- APK 86,510,107바이트(약 82.5MiB), ZIP 51,323,935바이트(약 48.9MiB).
+- ZIP 보관 만료: 2026-11-29 17:39 한국 시간.
+- 기존 앱을 삭제하지 않고 업데이트한다. 저장소 스키마 1→2 이관을 포함하므로 업데이트 후 기존 번호·조합·용지·순서·디자인 보존을 먼저 확인한다. 휴대폰 설치 화면에서 실패하면 여유 저장 공간을 확인한 뒤 이전에 성공했던 Windows ADB 방식으로 `adb install -r "APK의 전체 경로"`를 사용한다. 여러 기기가 있으면 `adb -s 기기번호 install -r "APK의 전체 경로"`로 지정한다.
+- [이번 버전 기기 확인 항목](settings-design-policy-review.md#검증과-다음-기기-확인): 내 번호 선택·해제·확인·취소, 생성 당시 설정 이름, 가로·확대 번호 배치와 버튼 줄바꿈, 디자인 유지·덮어쓰기 왕복과 초기화 경고를 확인한다. 실제 기기 설치·실행 검증은 아직 하지 않았다.
+
+## 이전 업데이트 APK (0.1.6-preview)
 
 사용자 요청으로 [2026-11-09 배지·간격·보관함 개선](ui-revision-2026-11-09.md)을 포함한 APK를 생성·다운로드 검증했다. 하트 배지, 회전별 번호 영역 비율, 조합 카드·일괄 삭제·하단 고정 버튼, 번호 추가 팝업과 간격 개선이 포함된다.
 
