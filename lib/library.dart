@@ -1,3 +1,4 @@
+import 'word_wrap_text.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'banner_scaffold.dart';
@@ -13,8 +14,20 @@ import 'number_display.dart';
 import 'favorite_number_dialog.dart';
 
 class SavedGame {
-  SavedGame(this.game, this.options, {String? source})
-    : source = source ?? (options == null ? 'random' : 'configured');
+  SavedGame(LottoGame game, this.options, {String? source, String? sourceName})
+    : source =
+          source ??
+          game.origin?.method ??
+          (options == null ? 'random' : 'configured'),
+      game = LottoGame(
+        game.numbers,
+        origin:
+            game.origin ??
+            GameOrigin(
+              source ?? (options == null ? 'random' : 'configured'),
+              name: sourceName,
+            ),
+      );
   final LottoGame game;
   final RecommendationOptions? options;
   final String source;
@@ -44,6 +57,7 @@ class LibraryStore extends ChangeNotifier {
                 ? null
                 : decodeOptions(g['options'] as Map<String, dynamic>),
             source: g['source'] as String?,
+            sourceName: g['sourceName'] as String?,
           ),
         )
         .toList();
@@ -65,6 +79,7 @@ class LibraryStore extends ChangeNotifier {
             {
               'numbers': g.game.numbers,
               'source': g.source,
+              'sourceName': g.game.origin?.name,
               'options': g.options == null ? null : encodeOptions(g.options!),
             },
         ],
@@ -107,6 +122,12 @@ class LibraryStore extends ChangeNotifier {
     if (values.any((n) => n < 1 || n > 45)) throw ArgumentError('번호 범위 오류');
     ns.addAll(values);
   });
+  Future<void> setNumbers(Set<int> values) => _change((ns, _) {
+    if (values.any((n) => n < 1 || n > 45)) throw ArgumentError('번호 범위 오류');
+    ns
+      ..clear()
+      ..addAll(values);
+  });
   Future<void> removeGames(Set<LottoGame> values) =>
       _change((_, gs) => gs.removeWhere((g) => values.contains(g.game)));
   Future<void> editGame(LottoGame? old, LottoGame next) => _change((_, gs) {
@@ -114,7 +135,7 @@ class LibraryStore extends ChangeNotifier {
       throw ArgumentError('이미 저장한 조합입니다.');
     }
     if (old != null) gs.removeWhere((g) => g.game == old);
-    gs.add(SavedGame(next, null, source: 'manual'));
+    gs.add(SavedGame(next, null, source: next.origin?.method ?? 'manual'));
   });
 }
 
@@ -243,11 +264,11 @@ class _LibraryPageState extends State<LibraryPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소', textAlign: TextAlign.center),
+              child: const WordWrapText('취소', textAlign: TextAlign.center),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('삭제', textAlign: TextAlign.center),
+              child: const WordWrapText('삭제', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -273,8 +294,8 @@ class _LibraryPageState extends State<LibraryPage>
 
   Future<void> addFavoriteNumbers() async {
     final values = await pickFavoriteNumbers(context, libraryStore.numbers);
-    if (!mounted || values == null || values.isEmpty) return;
-    await action(() => libraryStore.addNumbers(values));
+    if (!mounted || values == null) return;
+    await action(() => libraryStore.setNumbers(values));
   }
 
   Future<void> deleteSelectedGames() async {
@@ -308,40 +329,12 @@ class _LibraryPageState extends State<LibraryPage>
         if (libraryStore.numbers.isEmpty) const Text('저장한 번호가 없습니다.'),
         NumberPickerGrid(
           numbers: libraryStore.numbers.toList()..sort(),
-          selected: selectedNumbers,
-          onToggle: (n) => setState(() {
-            if (!selectedNumbers.add(n)) selectedNumbers.remove(n);
-          }),
+          leftAligned: true,
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: changing || selectedNumbers.isEmpty
-                    ? null
-                    : () async {
-                        final values = {...selectedNumbers};
-                        if (await confirm('선택한 번호를 삭제하시겠습니까?')) {
-                          if (await action(
-                                () => libraryStore.removeNumbers(values),
-                              ) &&
-                              mounted) {
-                            setState(() => selectedNumbers.removeAll(values));
-                          }
-                        }
-                      },
-                child: const Text('선택 번호 삭제', textAlign: TextAlign.center),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FilledButton(
-                onPressed: changing ? null : addFavoriteNumbers,
-                child: const Text('번호 추가', textAlign: TextAlign.center),
-              ),
-            ),
-          ],
+        FilledButton(
+          onPressed: changing ? null : addFavoriteNumbers,
+          child: const Text('내 번호 추가·삭제', textAlign: TextAlign.center),
         ),
       ],
     ],
@@ -350,20 +343,23 @@ class _LibraryPageState extends State<LibraryPage>
   Widget combinationActions(double maxHeight) {
     final add = FilledButton(
       onPressed: changing ? null : editGame,
-      child: const Text('조합 직접 추가', textAlign: TextAlign.center),
+      child: const WordWrapText('조합 직접 추가', textAlign: TextAlign.center),
     );
     final delete = OutlinedButton(
       onPressed: changing || selectedGames.isEmpty ? null : deleteSelectedGames,
       style: OutlinedButton.styleFrom(
         foregroundColor: Theme.of(context).colorScheme.error,
       ),
-      child: const Text('선택한 조합 삭제', textAlign: TextAlign.center),
+      child: const WordWrapText('선택한 조합 삭제', textAlign: TextAlign.center),
     );
     final paper = OutlinedButton(
       onPressed: changing || selectedGames.isEmpty || selectedGames.length > 5
           ? null
           : () => saveResultsToPaper(context, selectedGames.toList(), draws),
-      child: const Text('선택 조합으로 복권 용지 만들기', textAlign: TextAlign.center),
+      child: const WordWrapText(
+        '선택 조합으로 복권 용지 만들기',
+        textAlign: TextAlign.center,
+      ),
     );
     return Material(
       elevation: 3,
@@ -372,7 +368,14 @@ class _LibraryPageState extends State<LibraryPage>
         constraints: BoxConstraints(maxHeight: maxHeight),
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.fromLTRB(
+              12,
+              MediaQuery.orientationOf(context) == Orientation.landscape
+                  ? 6
+                  : 12,
+              12,
+              12,
+            ),
             child: MediaQuery.orientationOf(context) == Orientation.landscape
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -404,11 +407,7 @@ class _LibraryPageState extends State<LibraryPage>
     );
   }
 
-  String sourceName(SavedGame saved) => saved.source == 'manual'
-      ? '직접 입력'
-      : saved.options == null
-      ? '완전 랜덤'
-      : '상세 규칙';
+  String sourceName(SavedGame saved) => saved.game.origin?.label ?? '기록 없음';
 
   Widget gameCard(SavedGame saved, Widget? arrows) => Card(
     child: Column(
@@ -418,7 +417,7 @@ class _LibraryPageState extends State<LibraryPage>
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(left: 12),
-                child: Text(
+                child: WordWrapText(
                   sourceName(saved),
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
@@ -446,7 +445,7 @@ class _LibraryPageState extends State<LibraryPage>
         InkWell(
           onTap: changing ? null : () => editGame(saved.game),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
             child: NumberGrid(numbers: saved.game.numbers, fontSize: 18),
           ),
         ),
@@ -468,7 +467,7 @@ class _LibraryPageState extends State<LibraryPage>
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 0, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 0, 8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -477,7 +476,7 @@ class _LibraryPageState extends State<LibraryPage>
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
-                        '${p.games.length}게임',
+                        '${p.games.length}게임 · ${p.sourceSummary}',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
@@ -512,7 +511,10 @@ class _LibraryPageState extends State<LibraryPage>
                   builder: (_) => PaperView(paper: p, draws: draws),
                 ),
               ),
-              child: const Text('번호 크게 보기', textAlign: TextAlign.center),
+              child: const WordWrapText(
+                '번호 크게 보기',
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
         ),
@@ -527,7 +529,10 @@ class _LibraryPageState extends State<LibraryPage>
           onTap: () => editPreset(p),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
-            child: Text(p.name, style: Theme.of(context).textTheme.titleMedium),
+            child: WordWrapText(
+              p.name,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
         ),
       ),
@@ -545,8 +550,8 @@ class _LibraryPageState extends State<LibraryPage>
           }
         },
         itemBuilder: (_) => const [
-          PopupMenuItem(value: 'copy', child: Text('복제')),
-          PopupMenuItem(value: 'delete', child: Text('삭제')),
+          PopupMenuItem(value: 'copy', child: WordWrapText('복제')),
+          PopupMenuItem(value: 'delete', child: WordWrapText('삭제')),
         ],
       ),
     ],
@@ -556,6 +561,9 @@ class _LibraryPageState extends State<LibraryPage>
   Widget build(BuildContext context) => BannerScaffold(
     appBar: AppBar(
       title: const Text('보관함'),
+      toolbarHeight: MediaQuery.orientationOf(context) == Orientation.landscape
+          ? 40
+          : 56,
       bottom: TabBar(
         controller: tabs,
         isScrollable: true,
@@ -584,7 +592,10 @@ class _LibraryPageState extends State<LibraryPage>
                     builder: (_) => PaperEditor(draws: draws),
                   ),
                 ),
-                child: const Text('새 복권 용지', textAlign: TextAlign.center),
+                child: const WordWrapText(
+                  '새 복권 용지',
+                  textAlign: TextAlign.center,
+                ),
               ),
               const SizedBox(height: 12),
               CollectionOrder<LotteryPaper>(
@@ -645,7 +656,7 @@ class _LibraryPageState extends State<LibraryPage>
             children: [
               FilledButton(
                 onPressed: editPreset,
-                child: const Text('새 설정', textAlign: TextAlign.center),
+                child: const WordWrapText('새 설정', textAlign: TextAlign.center),
               ),
               const SizedBox(height: 12),
               CollectionOrder<Preset>(

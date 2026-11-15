@@ -13,7 +13,7 @@ const lottoColors = [
 Color lottoColor(int number) => lottoColors[(number - 1) ~/ 10];
 
 double numberAreaFraction(BuildContext context) =>
-    MediaQuery.orientationOf(context) == Orientation.landscape ? .65 : .85;
+    MediaQuery.orientationOf(context) == Orientation.landscape ? .82 : .85;
 
 /// Ratios refer to the available content width, independently of rotation.
 class NumberArea extends StatelessWidget {
@@ -31,7 +31,7 @@ class NumberArea extends StatelessWidget {
 
 Color numberSelectionAccent(BuildContext context) {
   var color = Theme.of(context).colorScheme.primary;
-  // The approved badge has a white heart in every theme.
+  // Keep the emphasis border visible against the white badge.
   while ((1.05 / (color.computeLuminance() + .05)) < 4.5) {
     color = Color.alphaBlend(const Color(0x18000000), color);
   }
@@ -95,7 +95,7 @@ class SelectableNumber extends StatelessWidget {
                       height: badge,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: accent,
+                        color: Colors.white,
                         border: Border.all(color: accent),
                         boxShadow: const [
                           BoxShadow(
@@ -107,7 +107,7 @@ class SelectableNumber extends StatelessWidget {
                       ),
                       child: Icon(
                         Icons.favorite,
-                        color: Colors.white,
+                        color: const Color(0xffc62828),
                         size: badge * .65,
                       ),
                     ),
@@ -131,11 +131,13 @@ class NumberPickerGrid extends StatelessWidget {
     this.disabled = const {},
     this.onToggle,
     this.maxColumns,
+    this.leftAligned = false,
   });
   final List<int> numbers;
   final Set<int> selected, favorites, disabled;
   final ValueChanged<int>? onToggle;
   final int? maxColumns;
+  final bool leftAligned;
   @override
   Widget build(BuildContext context) => NumberArea(
     child: LayoutBuilder(
@@ -157,7 +159,7 @@ class NumberPickerGrid extends StatelessWidget {
               )
             : 0.0;
         return Wrap(
-          alignment: WrapAlignment.center,
+          alignment: leftAligned ? WrapAlignment.start : WrapAlignment.center,
           spacing: spacing,
           runSpacing: 8,
           children: [
@@ -183,45 +185,22 @@ class NumberPickerGrid extends StatelessWidget {
   );
 }
 
-/// Keep six stable slots so adding a number never recenters the whole group.
+/// This preview deliberately does not use the page-wide number-area ratio.
 class SelectedNumberPreview extends StatelessWidget {
   const SelectedNumberPreview({super.key, required this.numbers});
   final List<int> numbers;
   @override
-  Widget build(BuildContext context) => NumberArea(
-    child: LayoutBuilder(
-      builder: (context, c) {
-        final side = numberSide(context, 18);
-        final columns = math.max(
-          1,
-          math.min(6, ((c.maxWidth + 4) / (side + 4)).floor()),
-        );
-        final tileWidth = math.min(side, c.maxWidth);
-        final spacing = columns > 1
-            ? math.max(
-                0.0,
-                (c.maxWidth - columns * tileWidth) / (columns - 1) - .01,
-              )
-            : 0.0;
-        return Wrap(
-          runSpacing: 8,
-          spacing: spacing,
-          children: [
-            for (var i = 0; i < 6; i++)
-              SizedBox(
-                width: tileWidth,
-                height: tileWidth,
-                child: i < numbers.length
-                    ? FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: NumberTile(number: numbers[i], fontSize: 18),
-                      )
-                    : null,
-              ),
-          ],
-        );
-      },
-    ),
+  Widget build(BuildContext context) => Center(
+    child: numbers.isEmpty
+        ? SizedBox(height: numberSide(context, 18))
+        : Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final n in numbers) NumberTile(number: n, fontSize: 18),
+            ],
+          ),
   );
 }
 

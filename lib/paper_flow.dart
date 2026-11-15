@@ -1,3 +1,4 @@
+import 'word_wrap_text.dart';
 import 'package:flutter/material.dart';
 import 'banner_scaffold.dart';
 import 'package:flutter/foundation.dart';
@@ -147,11 +148,11 @@ class _PaperEditorState extends State<PaperEditor> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소', textAlign: TextAlign.center),
+              child: const WordWrapText('취소', textAlign: TextAlign.center),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('교체', textAlign: TextAlign.center),
+              child: const WordWrapText('교체', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -207,7 +208,7 @@ class _PaperEditorState extends State<PaperEditor> {
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: Text(
+                      child: WordWrapText(
                         '게임 ${String.fromCharCode(65 + i)}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
@@ -226,7 +227,10 @@ class _PaperEditorState extends State<PaperEditor> {
                       if (!widget.fromResults)
                         TextButton(
                           onPressed: busy ? null : () => add(replace: i),
-                          child: const Text('교체', textAlign: TextAlign.center),
+                          child: const WordWrapText(
+                            '교체',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       IconButton(
                         tooltip: '위로 이동',
@@ -243,7 +247,10 @@ class _PaperEditorState extends State<PaperEditor> {
                           onPressed: busy
                               ? null
                               : () => setState(() => games.removeAt(i)),
-                          child: const Text('제거', textAlign: TextAlign.center),
+                          child: const WordWrapText(
+                            '제거',
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                     ],
                   ),
@@ -253,11 +260,11 @@ class _PaperEditorState extends State<PaperEditor> {
           if (games.length < 5 && !widget.fromResults)
             OutlinedButton(
               onPressed: busy ? null : add,
-              child: const Text('조합 추가', textAlign: TextAlign.center),
+              child: const WordWrapText('조합 추가', textAlign: TextAlign.center),
             ),
           FilledButton(
             onPressed: busy || games.isEmpty ? null : save,
-            child: Text(
+            child: WordWrapText(
               widget.paper == null ? '복권 용지 저장' : '편집한 내용 저장',
               textAlign: TextAlign.center,
             ),
@@ -291,12 +298,16 @@ class _GameComposerState extends State<GameComposer> {
   void initState() {
     super.initState();
     selected.addAll(widget.initialGame?.numbers ?? []);
+    origin = widget.initialGame?.origin ?? const GameOrigin('manual');
   }
 
   int mode = 0;
   bool busy = false;
   RecommendationOptions? options;
+  String? chosenPresetName;
+  GameOrigin origin = const GameOrigin('manual');
   Future<void> editOptions() async {
+    Preset? savedPreset;
     final next = await Navigator.push<RecommendationOptions>(
       context,
       MaterialPageRoute(
@@ -304,10 +315,16 @@ class _GameComposerState extends State<GameComposer> {
           initial: options,
           draws: widget.draws,
           completeOnly: true,
+          onSaved: (preset) => savedPreset = preset,
         ),
       ),
     );
     if (mounted && next != null) {
+      if (savedPreset != null && sameOptions(savedPreset!.options, next)) {
+        chosenPresetName = savedPreset!.name;
+      } else if (options == null || !sameOptions(options!, next)) {
+        chosenPresetName = null;
+      }
       setState(() => options = next);
       await generate();
     }
@@ -315,14 +332,22 @@ class _GameComposerState extends State<GameComposer> {
 
   Future<void> generate() async {
     if (mode == 3 && options == null) {
+      Preset? savedPreset;
       options = await Navigator.push<RecommendationOptions>(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              SettingsEditor(draws: widget.draws, completeOnly: true),
+          builder: (_) => SettingsEditor(
+            draws: widget.draws,
+            completeOnly: true,
+            onSaved: (preset) => savedPreset = preset,
+          ),
         ),
       );
       if (!mounted || options == null) return;
+      chosenPresetName =
+          savedPreset != null && sameOptions(savedPreset!.options, options!)
+          ? savedPreset!.name
+          : null;
     }
     setState(() => busy = true);
     try {
@@ -332,6 +357,9 @@ class _GameComposerState extends State<GameComposer> {
       ));
       if (mounted) {
         setState(() {
+          origin = mode == 2
+              ? const GameOrigin('random')
+              : GameOrigin.configured(chosenPresetName);
           selected
             ..clear()
             ..addAll(game.numbers);
@@ -411,6 +439,7 @@ class _GameComposerState extends State<GameComposer> {
             },
             onToggle: (n) => setState(() {
               if (!selected.add(n)) selected.remove(n);
+              origin = const GameOrigin('manual');
             }),
           ),
         ),
@@ -420,18 +449,21 @@ class _GameComposerState extends State<GameComposer> {
               decoration: const InputDecoration(labelText: '저장한 설정 선택'),
               items: [
                 for (final p in presetStore.items)
-                  DropdownMenuItem(value: p.id, child: Text(p.name)),
+                  DropdownMenuItem(value: p.id, child: WordWrapText(p.name)),
               ],
               onChanged: busy
                   ? null
                   : (id) async {
-                      setState(() => options = presetStore.find(id)?.options);
+                      setState(() {
+                        options = presetStore.find(id)?.options;
+                        chosenPresetName = presetStore.find(id)?.name;
+                      });
                       await generate();
                     },
             ),
           TextButton(
             onPressed: busy ? null : editOptions,
-            child: const Text('설정 수정', textAlign: TextAlign.center),
+            child: const WordWrapText('설정 수정', textAlign: TextAlign.center),
           ),
         ],
         const SizedBox(height: 16),
@@ -440,7 +472,7 @@ class _GameComposerState extends State<GameComposer> {
             children: [
               const Flexible(
                 flex: 2,
-                child: Text(
+                child: WordWrapText(
                   '선택한 조합',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
@@ -470,13 +502,14 @@ class _GameComposerState extends State<GameComposer> {
         if (mode >= 2)
           OutlinedButton(
             onPressed: busy ? null : generate,
-            child: const Text('다시 생성', textAlign: TextAlign.center),
+            child: const WordWrapText('다시 생성', textAlign: TextAlign.center),
           ),
         FilledButton(
           onPressed: busy || selected.length != 6
               ? null
-              : () => Navigator.pop(context, LottoGame(selected)),
-          child: Text(widget.actionLabel, textAlign: TextAlign.center),
+              : () =>
+                    Navigator.pop(context, LottoGame(selected, origin: origin)),
+          child: WordWrapText(widget.actionLabel, textAlign: TextAlign.center),
         ),
       ],
     ),

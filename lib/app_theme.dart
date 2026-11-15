@@ -1,3 +1,4 @@
+import 'word_wrap_text.dart';
 import 'package:flutter/material.dart';
 import 'local_storage.dart';
 import 'banner_scaffold.dart';
@@ -95,7 +96,10 @@ class _AppThemeSettingsState extends State<AppThemeSettings> {
     final selected = draft ?? controller.mode;
     return BannerScaffold(
       appBar: AppBar(
-        title: const FittedBox(fit: BoxFit.scaleDown, child: Text('앱 테마 설정')),
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: WordWrapText('앱 테마 설정'),
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -114,7 +118,7 @@ class _AppThemeSettingsState extends State<AppThemeSettings> {
                       );
                     }
                   },
-            child: const Text('저장', textAlign: TextAlign.center),
+            child: const WordWrapText('저장', textAlign: TextAlign.center),
           ),
         ),
       ),
@@ -125,7 +129,10 @@ class _AppThemeSettingsState extends State<AppThemeSettings> {
           if (controller.loadFailed)
             TextButton(
               onPressed: controller.load,
-              child: const Text('테마 다시 불러오기', textAlign: TextAlign.center),
+              child: const WordWrapText(
+                '테마 다시 불러오기',
+                textAlign: TextAlign.center,
+              ),
             ),
           RadioGroup<ThemeMode>(
             groupValue: selected,

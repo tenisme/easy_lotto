@@ -155,30 +155,40 @@ void main() {
   );
 
   testWidgets(
-    'design editor shows only the chosen subpanel and bold headings',
+    'two scopes each expose five design choices without a separate random scope',
     (tester) async {
       await tester.pumpWidget(
         const MaterialApp(home: DesignSettings(paperId: 'p')),
       );
       await tester.pumpAndSettle();
       expect(find.text('기본 디자인 선택'), findsOneWidget);
-      expect(find.byType(RadioGroup<int>), findsNothing);
-      expect(find.text('랜덤 디자인 적용 영역'), findsNothing);
-      void select(DesignMode mode) => tester
+      expect(
+        tester
+            .widgetList<RadioListTile<DesignMode>>(
+              find.byType(RadioListTile<DesignMode>),
+            )
+            .length,
+        2,
+      );
+      expect(
+        tester
+            .widgetList<RadioListTile<int>>(find.byType(RadioListTile<int>))
+            .length,
+        5,
+      );
+      tester
           .widget<RadioGroup<DesignMode>>(find.byType(RadioGroup<DesignMode>))
-          .onChanged(mode);
-      select(DesignMode.perPaper);
+          .onChanged(DesignMode.perPaper);
       await tester.pumpAndSettle();
       expect(find.text('기본 디자인 선택'), findsNothing);
-      expect(find.byType(RadioGroup<int>), findsOneWidget);
-      select(DesignMode.random);
-      await tester.pumpAndSettle();
-      expect(find.text('용지별 디자인 선택'), findsNothing);
-      expect(find.byType(RadioGroup<int>), findsNothing);
-      final heading = tester.widget<Text>(find.text('랜덤 디자인 적용 영역'));
-      expect(heading.style!.fontWeight, FontWeight.bold);
-      expect(heading.style!.fontSize, 20);
-      expect(find.byType(RadioGroup<bool>), findsOneWidget);
+      expect(find.text('용지별 디자인 선택'), findsOneWidget);
+      expect(find.text('기본 디자인 사용'), findsNothing);
+      expect(
+        tester
+            .widgetList<RadioListTile<int>>(find.byType(RadioListTile<int>))
+            .map((r) => r.value),
+        [0, 1, 2, 3, -1],
+      );
       await tester.scrollUntilVisible(find.text('번호 칸 디자인 예시'), 150);
       expect(find.text('번호 칸 디자인 예시'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -210,7 +220,7 @@ void main() {
       (first.left + last.right) / 2,
       tester.getCenter(find.byType(NumberGrid)).dx,
     );
-    expect(last.right - first.left, closeTo(760 * .65, .01));
+    expect(last.right - first.left, closeTo(760 * .82, .01));
   });
 
   testWidgets(

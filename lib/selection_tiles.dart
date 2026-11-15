@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'word_wrap_text.dart';
 
 /// Uniform, checkmark-free text choices; wrapping follows the active text scale.
 class SelectionTiles extends StatelessWidget {
@@ -24,7 +25,16 @@ class SelectionTiles extends StatelessWidget {
       final scaler = MediaQuery.textScalerOf(context);
       double measure(String text, double width) {
         final p = TextPainter(
-          text: TextSpan(text: text, style: style),
+          text: TextSpan(
+            text: buttonLineText(
+              text,
+              width,
+              style,
+              scaler,
+              Directionality.of(context),
+            ),
+            style: style,
+          ),
           textDirection: Directionality.of(context),
           textScaler: scaler,
         )..layout(maxWidth: width);
@@ -84,7 +94,7 @@ class SelectionTiles extends StatelessWidget {
                   onPressed: onChanged == null || disabled.contains(i)
                       ? null
                       : () => onChanged!(i),
-                  child: Text(labels[i], textAlign: TextAlign.center),
+                  child: WordWrapText(labels[i]),
                 ),
               ),
             ),

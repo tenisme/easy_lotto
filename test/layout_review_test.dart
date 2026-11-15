@@ -213,11 +213,9 @@ void main() {
       expect(find.text('간격 넓게'), findsNothing);
       expect(
         tester
-            .widgetList<RadioListTile<PaperDesign>>(
-              find.byType(RadioListTile<PaperDesign>),
-            )
+            .widgetList<RadioListTile<int>>(find.byType(RadioListTile<int>))
             .length,
-        4,
+        5,
       );
     },
   );
@@ -337,7 +335,7 @@ void main() {
           )
           .properties
           .selected,
-      true,
+      false,
     );
     await tester.scrollUntilVisible(
       find.byType(Checkbox),

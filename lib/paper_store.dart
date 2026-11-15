@@ -5,13 +5,24 @@ import 'domain/recommendation.dart';
 
 class LotteryPaper {
   LotteryPaper(this.id, this.title, Iterable<LottoGame> games)
-    : games = List.unmodifiable(games.map((g) => LottoGame(g.numbers))) {
+    : games = List.unmodifiable(
+        games.map((g) => LottoGame(g.numbers, origin: g.origin)),
+      ) {
     if (this.games.isEmpty || this.games.length > 5) {
       throw ArgumentError('용지는 1~5게임이어야 합니다.');
     }
   }
   final String id, title;
   final List<LottoGame> games;
+  String get sourceSummary {
+    final labels = games
+        .map((g) => g.origin?.label ?? '기록 없음')
+        .toSet()
+        .toList();
+    return labels.length == 1
+        ? labels.single
+        : '${labels.first} 외 ${labels.length - 1}개';
+  }
 }
 
 class PaperStore extends ChangeNotifier {
@@ -23,13 +34,13 @@ class PaperStore extends ChangeNotifier {
         ? <LotteryPaper>[]
         : (jsonDecode(body) as List)
               .map(
-                (p) => LotteryPaper(
-                  p['id'] as String,
-                  p['title'] as String,
-                  (p['games'] as List).map(
-                    (ns) => LottoGame((ns as List).cast<int>()),
-                  ),
-                ),
+                (p) => LotteryPaper(p['id'] as String, p['title'] as String, [
+                  for (var i = 0; i < (p['games'] as List).length; i++)
+                    LottoGame(
+                      (p['games'][i] as List).cast<int>(),
+                      origin: GameOrigin.fromJson((p['origins'] as List?)?[i]),
+                    ),
+                ]),
               )
               .toList();
     items = loaded;
@@ -69,6 +80,7 @@ class PaperStore extends ChangeNotifier {
               'id': p.id,
               'title': p.title,
               'games': [for (final g in p.games) g.numbers],
+              'origins': [for (final g in p.games) g.origin?.toJson()],
             },
         ]),
       )) {
@@ -101,6 +113,7 @@ class PaperStore extends ChangeNotifier {
               'id': p.id,
               'title': p.title,
               'games': [for (final g in p.games) g.numbers],
+              'origins': [for (final g in p.games) g.origin?.toJson()],
             },
         ]),
       )) {

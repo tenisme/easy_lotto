@@ -142,3 +142,11 @@ class PresetStore extends ChangeNotifier {
 }
 
 final presetStore = PresetStore();
+
+GameOrigin captureOrigin(RecommendationOptions? options, String? presetId) {
+  if (options == null) return const GameOrigin('random');
+  final preset = presetStore.find(presetId);
+  return GameOrigin.configured(
+    preset != null && sameOptions(preset.options, options) ? preset.name : null,
+  );
+}

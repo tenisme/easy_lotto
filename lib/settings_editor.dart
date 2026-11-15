@@ -1,3 +1,4 @@
+import 'word_wrap_text.dart';
 import 'selection_tiles.dart';
 import 'package:flutter/material.dart';
 import 'banner_scaffold.dart';
@@ -75,11 +76,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('아니요', textAlign: TextAlign.center),
+              child: const WordWrapText('아니요', textAlign: TextAlign.center),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('네', textAlign: TextAlign.center),
+              child: const WordWrapText('네', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -107,11 +108,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('취소', textAlign: TextAlign.center),
+              child: const WordWrapText('취소', textAlign: TextAlign.center),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, controller.text),
-              child: const Text('저장', textAlign: TextAlign.center),
+              child: const WordWrapText('저장', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -255,11 +256,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('취소', textAlign: TextAlign.center),
+                child: const WordWrapText('취소', textAlign: TextAlign.center),
               ),
               FilledButton(
                 onPressed: valid ? () => Navigator.pop(context, n) : null,
-                child: const Text('확인', textAlign: TextAlign.center),
+                child: const WordWrapText('확인', textAlign: TextAlign.center),
               ),
             ],
           );
@@ -285,11 +286,17 @@ class _SettingsEditorState extends State<SettingsEditor> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('저장하지 않음', textAlign: TextAlign.center),
+                child: const WordWrapText(
+                  '저장하지 않음',
+                  textAlign: TextAlign.center,
+                ),
               ),
               FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('저장하고 나가기', textAlign: TextAlign.center),
+                child: const WordWrapText(
+                  '저장하고 나가기',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ],
           ),
@@ -359,7 +366,7 @@ class _SettingsEditorState extends State<SettingsEditor> {
                   TextButton(
                     onPressed: () =>
                         update(() => favoritesOnly = !favoritesOnly),
-                    child: Text(
+                    child: WordWrapText(
                       favoritesOnly ? '전체 번호 보기' : '내 번호에서 선택',
                       textAlign: TextAlign.center,
                     ),
@@ -395,11 +402,11 @@ class _SettingsEditorState extends State<SettingsEditor> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('취소', textAlign: TextAlign.center),
+              child: const WordWrapText('취소', textAlign: TextAlign.center),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, selected),
-              child: const Text('적용', textAlign: TextAlign.center),
+              child: const WordWrapText('적용', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -426,9 +433,9 @@ class _SettingsEditorState extends State<SettingsEditor> {
     initialValue: value ?? -1,
     decoration: InputDecoration(labelText: label),
     items: [
-      const DropdownMenuItem(value: -1, child: Text('제한 없음')),
+      const DropdownMenuItem(value: -1, child: WordWrapText('제한 없음')),
       for (var n = 0; n <= max; n++)
-        DropdownMenuItem(value: n, child: Text('$n개')),
+        DropdownMenuItem(value: n, child: WordWrapText('$n개')),
     ],
     onChanged: (v) => setState(() => changed(v == -1 ? null : v)),
   );
@@ -448,7 +455,7 @@ class _SettingsEditorState extends State<SettingsEditor> {
           if (presetId != null)
             TextButton(
               onPressed: saving ? null : () => save(rename: true),
-              child: const Text('이름 변경', textAlign: TextAlign.center),
+              child: const WordWrapText('이름 변경', textAlign: TextAlign.center),
             ),
         ],
       ),
@@ -460,14 +467,17 @@ class _SettingsEditorState extends State<SettingsEditor> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: saving ? null : save,
-                  child: const Text('설정 저장', textAlign: TextAlign.center),
+                  child: const WordWrapText(
+                    '설정 저장',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
                   onPressed: saving ? null : complete,
-                  child: Text(
+                  child: WordWrapText(
                     widget.completeOnly ? '설정 완료' : '번호 생성',
                     textAlign: TextAlign.center,
                   ),
@@ -533,12 +543,15 @@ class _SettingsEditorState extends State<SettingsEditor> {
                       'any',
                   decoration: const InputDecoration(labelText: '연속 묶음 구성'),
                   items: [
-                    const DropdownMenuItem(value: 'any', child: Text('제한 없음')),
+                    const DropdownMenuItem(
+                      value: 'any',
+                      child: WordWrapText('제한 없음'),
+                    ),
                     for (final s
                         in groups == 1
                             ? ['2', '3', '4', '5', '6']
                             : ['2+2', '2+3', '2+4', '3+3'])
-                      DropdownMenuItem(value: s, child: Text(s)),
+                      DropdownMenuItem(value: s, child: WordWrapText(s)),
                   ],
                   onChanged: (v) => setState(() {
                     final lengths = v == null || v == 'any'
@@ -570,9 +583,12 @@ class _SettingsEditorState extends State<SettingsEditor> {
                   initialValue: missing ?? 0,
                   decoration: const InputDecoration(labelText: '미출현 번호 포함 수'),
                   items: [
-                    const DropdownMenuItem(value: 0, child: Text('사용 안 함')),
+                    const DropdownMenuItem(
+                      value: 0,
+                      child: WordWrapText('사용 안 함'),
+                    ),
                     for (var n = 1; n <= 6; n++)
-                      DropdownMenuItem(value: n, child: Text('$n개')),
+                      DropdownMenuItem(value: n, child: WordWrapText('$n개')),
                   ],
                   onChanged: (v) => setState(() => missing = v == 0 ? null : v),
                 ),
@@ -624,7 +640,10 @@ class _SettingsEditorState extends State<SettingsEditor> {
                 const Text('미출현 규칙은 최근 5회 데이터 저장 후 사용할 수 있습니다.'),
               TextButton(
                 onPressed: () => setState(() => load(RecommendationOptions())),
-                child: const Text('모든 설정 초기화', textAlign: TextAlign.center),
+                child: const WordWrapText(
+                  '모든 설정 초기화',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ],
           ),

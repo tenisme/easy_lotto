@@ -42,7 +42,20 @@ class LocalStorage {
     final db = await factory.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: 2,
+        onUpgrade: (db, oldVersion, _) async {
+          if (oldVersion < 2) {
+            await db.execute(
+              'ALTER TABLE number_sets ADD COLUMN source_name TEXT',
+            );
+            await db.execute(
+              "ALTER TABLE lottery_paper_games ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'",
+            );
+            await db.execute(
+              'ALTER TABLE lottery_paper_games ADD COLUMN source_name TEXT',
+            );
+          }
+        },
         onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
         onCreate: (db, _) async {
           await db.execute(
@@ -55,7 +68,7 @@ class LocalStorage {
             'CREATE TABLE favorite_numbers (number INTEGER PRIMARY KEY CHECK(number BETWEEN 1 AND 45))',
           );
           await db.execute(
-            'CREATE TABLE number_sets (id TEXT PRIMARY KEY, source TEXT NOT NULL, options TEXT, position INTEGER NOT NULL)',
+            'CREATE TABLE number_sets (id TEXT PRIMARY KEY, source TEXT NOT NULL, source_name TEXT, options TEXT, position INTEGER NOT NULL)',
           );
           await db.execute(
             'CREATE TABLE number_set_items (set_id TEXT NOT NULL REFERENCES number_sets(id) ON DELETE CASCADE, number INTEGER CHECK(number BETWEEN 1 AND 45), PRIMARY KEY(set_id,number))',
@@ -64,7 +77,7 @@ class LocalStorage {
             'CREATE TABLE lottery_papers (id TEXT PRIMARY KEY, title TEXT NOT NULL, position INTEGER NOT NULL)',
           );
           await db.execute(
-            'CREATE TABLE lottery_paper_games (id TEXT PRIMARY KEY, paper_id TEXT NOT NULL REFERENCES lottery_papers(id) ON DELETE CASCADE, position INTEGER CHECK(position BETWEEN 0 AND 4), UNIQUE(paper_id,position))',
+            "CREATE TABLE lottery_paper_games (id TEXT PRIMARY KEY, paper_id TEXT NOT NULL REFERENCES lottery_papers(id) ON DELETE CASCADE, source TEXT NOT NULL DEFAULT 'unknown', source_name TEXT, position INTEGER CHECK(position BETWEEN 0 AND 4), UNIQUE(paper_id,position))",
           );
           await db.execute(
             'CREATE TABLE lottery_paper_game_items (game_id TEXT NOT NULL REFERENCES lottery_paper_games(id) ON DELETE CASCADE, number INTEGER CHECK(number BETWEEN 1 AND 45), PRIMARY KEY(game_id,number))',
@@ -184,6 +197,7 @@ class LocalStorage {
           'source':
               g['source'] ?? (g['options'] == null ? 'random' : 'configured'),
           'options': g['options'] == null ? null : jsonEncode(g['options']),
+          'source_name': g['sourceName'],
           'position': position++,
         });
         await _numbers(tx, 'number_set_items', 'set_id', id, game.numbers);
@@ -208,6 +222,8 @@ class LocalStorage {
             'id': id,
             'paper_id': p['id'],
             'position': i,
+            'source': (p['origins'] as List?)?[i]?['method'] ?? 'unknown',
+            'source_name': (p['origins'] as List?)?[i]?['name'],
           });
           await _numbers(
             tx,
@@ -301,6 +317,7 @@ class LocalStorage {
       games.add({
         'numbers': await numbers('number_set_items', 'set_id', g['id']!),
         'source': g['source'],
+        'sourceName': g['source_name'],
         'options': g['options'] == null
             ? null
             : jsonDecode(g['options'] as String),
@@ -316,6 +333,7 @@ class LocalStorage {
     final papers = <Map<String, dynamic>>[];
     for (final p in await tx.query('lottery_papers', orderBy: 'position')) {
       final games = <List<int>>[];
+      final origins = <Map<String, dynamic>>[];
       for (final g in await tx.query(
         'lottery_paper_games',
         where: 'paper_id = ?',
@@ -325,8 +343,14 @@ class LocalStorage {
         games.add(
           await numbers('lottery_paper_game_items', 'game_id', g['id']!),
         );
+        origins.add({'method': g['source'], 'name': g['source_name']});
       }
-      papers.add({'id': p['id'], 'title': p['title'], 'games': games});
+      papers.add({
+        'id': p['id'],
+        'title': p['title'],
+        'games': games,
+        'origins': origins,
+      });
     }
     values['papers.v1'] = jsonEncode(papers);
     values['draws.v1'] = <String>[];

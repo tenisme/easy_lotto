@@ -234,44 +234,40 @@ void main() {
   });
 
   testWidgets(
-    'current paper random preserves other papers and restores local style',
+    'local random is a fifth design choice and fixed choices restore it',
     (tester) async {
       await DisplayPreferences(
         mode: DesignMode.perPaper,
         defaultDesign: PaperDesign.basic,
         overrides: {'a': PaperDesign.cards, 'b': PaperDesign.basic},
       ).save();
-      await tester.pumpWidget(
-        const MaterialApp(home: DesignSettings(paperId: 'a')),
-      );
+      Future<void> show() async {
+        await tester.pumpWidget(
+          const MaterialApp(home: DesignSettings(paperId: 'a')),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await show();
+      tester
+          .widget<RadioGroup<int>>(find.byType(RadioGroup<int>))
+          .onChanged(-1);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('열 때마다 랜덤'));
-      await tester.pump();
-      await tester.tap(find.text('현재 용지에만 적용'));
-      await tester.pump();
       await tester.tap(find.text('변경 완료'));
       await tester.pumpAndSettle();
       var prefs = await DisplayPreferences.load();
-      expect(prefs.mode, DesignMode.perPaper);
       expect(prefs.randomPapers, {'a'});
       expect(prefs.resolve('b', Random()), PaperDesign.basic);
-      expect(prefs.resolve('c', Random()), PaperDesign.basic);
       await tester.pumpWidget(const SizedBox());
-      await tester.pumpAndSettle();
-      await tester.pumpWidget(
-        const MaterialApp(home: DesignSettings(paperId: 'a')),
-      );
-      await tester.pumpAndSettle();
+      await show();
       expect(
-        tester
-            .widget<RadioListTile<bool>>(
-              find.widgetWithText(RadioListTile<bool>, '현재 용지에만 적용'),
-            )
-            .value,
-        false,
+        tester.widget<RadioGroup<int>>(find.byType(RadioGroup<int>)).groupValue,
+        -1,
       );
-      await tester.tap(find.text('용지별 디자인'));
-      await tester.pump();
+      tester
+          .widget<RadioGroup<int>>(find.byType(RadioGroup<int>))
+          .onChanged(PaperDesign.cards.index);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('변경 완료'));
       await tester.pumpAndSettle();
       prefs = await DisplayPreferences.load();
@@ -279,30 +275,48 @@ void main() {
       expect(prefs.resolve('a', Random()), PaperDesign.cards);
     },
   );
-
-  testWidgets('global random switching to current restores other papers mode', (
-    tester,
-  ) async {
-    await DisplayPreferences(
-      mode: DesignMode.random,
-      beforeRandomMode: DesignMode.perPaper,
-      defaultDesign: PaperDesign.basic,
-      overrides: {'b': PaperDesign.cards},
-    ).save();
-    await tester.pumpWidget(
-      const MaterialApp(home: DesignSettings(paperId: 'a')),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('현재 용지에만 적용'));
-    await tester.pump();
-    await tester.tap(find.text('변경 완료'));
-    await tester.pumpAndSettle();
-    final prefs = await DisplayPreferences.load();
-    expect(prefs.mode, DesignMode.perPaper);
-    expect(prefs.randomPapers, {'a'});
-    expect(prefs.resolve('b', Random()), PaperDesign.cards);
-    expect(prefs.resolve('c', Random()), PaperDesign.basic);
-  });
+  testWidgets(
+    'global random converts to a maintained fixed default plus local random',
+    (tester) async {
+      await DisplayPreferences(
+        mode: DesignMode.random,
+        beforeRandomMode: DesignMode.perPaper,
+        defaultDesign: PaperDesign.basic,
+        overrides: {'b': PaperDesign.cards},
+      ).save();
+      await tester.pumpWidget(
+        const MaterialApp(home: DesignSettings(paperId: 'a')),
+      );
+      await tester.pumpAndSettle();
+      tester
+          .widget<RadioGroup<int>>(find.byType(RadioGroup<int>))
+          .onChanged(PaperDesign.basic.index);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('유지하기'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('유지하기'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byType(RadioGroup<DesignMode>),
+        -200,
+      );
+      await tester.pumpAndSettle();
+      tester
+          .widget<RadioGroup<DesignMode>>(find.byType(RadioGroup<DesignMode>))
+          .onChanged(DesignMode.perPaper);
+      await tester.pumpAndSettle();
+      tester
+          .widget<RadioGroup<int>>(find.byType(RadioGroup<int>))
+          .onChanged(-1);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('변경 완료'));
+      await tester.pumpAndSettle();
+      final prefs = await DisplayPreferences.load();
+      expect(prefs.randomPapers, {'a'});
+      expect(prefs.resolve('b', Random()), PaperDesign.cards);
+      expect(prefs.resolve('c', Random()), PaperDesign.basic);
+    },
+  );
 
   for (final label in ['배경 이미지 변경']) {
     testWidgets('$label is a three-second placeholder without navigation', (

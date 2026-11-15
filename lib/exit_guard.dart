@@ -1,3 +1,4 @@
+import 'word_wrap_text.dart';
 import 'package:flutter/material.dart';
 import 'local_storage.dart';
 
@@ -38,11 +39,11 @@ Future<bool> confirmResultLoss(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(stay, textAlign: TextAlign.center),
+            child: WordWrapText(stay, textAlign: TextAlign.center),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(leave, textAlign: TextAlign.center),
+            child: WordWrapText(leave, textAlign: TextAlign.center),
           ),
         ],
       ),

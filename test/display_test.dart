@@ -125,28 +125,33 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
-  testWidgets('random mode disables editors without disabling mode switch', (
-    tester,
-  ) async {
+  testWidgets('random is available inside both design scopes', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(home: DesignSettings(paperId: 'p')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('열 때마다 랜덤'));
-    await tester.pumpAndSettle();
-    final choices = tester.widgetList<RadioListTile<PaperDesign>>(
-      find.byType(RadioListTile<PaperDesign>),
-    );
-    expect(choices.every((c) => c.enabled == false), isTrue);
-    await tester.tap(find.text('기본 디자인').first);
-    await tester.pumpAndSettle();
     expect(
       tester
-          .widgetList<RadioListTile<PaperDesign>>(
-            find.byType(RadioListTile<PaperDesign>),
+          .widgetList<RadioListTile<DesignMode>>(
+            find.byType(RadioListTile<DesignMode>),
           )
-          .every((c) => c.enabled == true),
-      isTrue,
+          .map((r) => r.value),
+      [DesignMode.basic, DesignMode.perPaper],
+    );
+    tester.widget<RadioGroup<int>>(find.byType(RadioGroup<int>)).onChanged(-1);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<RadioGroup<int>>(find.byType(RadioGroup<int>)).groupValue,
+      -1,
+    );
+    tester
+        .widget<RadioGroup<DesignMode>>(find.byType(RadioGroup<DesignMode>))
+        .onChanged(DesignMode.perPaper);
+    await tester.pumpAndSettle();
+    expect(find.text('기본 디자인 사용'), findsNothing);
+    expect(
+      tester.widget<RadioGroup<int>>(find.byType(RadioGroup<int>)).groupValue,
+      -1,
     );
   });
 }

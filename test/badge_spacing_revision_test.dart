@@ -56,7 +56,7 @@ void main() {
   }
 
   testWidgets(
-    'six-number area occupies 85 percent portrait and 65 percent landscape',
+    'six-number area occupies 85 percent portrait and 82 percent landscape',
     (tester) async {
       for (final size in [const Size(700, 1200), const Size(1200, 700)]) {
         tester.view.physicalSize = size;
@@ -73,7 +73,7 @@ void main() {
         await tester.pumpAndSettle();
         final first = tester.getRect(find.byType(NumberTile).first),
             last = tester.getRect(find.byType(NumberTile).last);
-        final fraction = size.width > size.height ? .65 : .85;
+        final fraction = size.width > size.height ? .82 : .85;
         expect(last.right - first.left, closeTo(size.width * fraction, .01));
         expect((first.left + last.right) / 2, size.width / 2);
         expect(
@@ -88,7 +88,7 @@ void main() {
   );
 
   testWidgets(
-    'favorite badge has white heart, emphasis border and larger size in both themes',
+    'favorite badge has red heart, white surface and emphasis outline in both themes',
     (tester) async {
       for (final brightness in Brightness.values) {
         await tester.pumpWidget(
@@ -111,10 +111,14 @@ void main() {
           find.byKey(const ValueKey('favorite-badge-11')),
         );
         final decoration = badge.decoration! as BoxDecoration;
-        expect((decoration.border! as Border).top.color, decoration.color);
+        expect(decoration.color, Colors.white);
+        expect(
+          (decoration.border! as Border).top.color,
+          numberSelectionAccent(tester.element(find.byType(SelectableNumber))),
+        );
         expect(
           tester.widget<Icon>(find.byIcon(Icons.favorite)).color,
-          Colors.white,
+          const Color(0xffc62828),
         );
         expect(
           tester.getSize(find.byKey(const ValueKey('favorite-badge-11'))).width,
@@ -124,7 +128,7 @@ void main() {
           ),
         );
         expect(
-          1.05 / (decoration.color!.computeLuminance() + .05),
+          1.05 / (const Color(0xffc62828).computeLuminance() + .05),
           greaterThanOrEqualTo(4.5),
         );
         expect(tester.takeException(), isNull);
@@ -176,26 +180,26 @@ void main() {
   );
 
   testWidgets(
-    'number add confirms once, preserves old numbers and survives reload',
+    'number management toggles saved choices and commits only on confirmation',
     (tester) async {
       viewport(tester, const Size(420, 900));
       libraryStore.numbers = {11};
       await library(tester);
-      await tester.tap(find.widgetWithText(FilledButton, '번호 추가'));
+      await tester.tap(find.widgetWithText(FilledButton, '내 번호 추가·삭제'));
       await tester.pumpAndSettle();
       expect(find.byType(FavoriteNumberDialog), findsOneWidget);
       final confirm = find.widgetWithText(FilledButton, '확인');
-      expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+      expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
       await choose(tester, 11);
-      expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+      expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
       await choose(tester, 1);
       await choose(tester, 2);
       expect(libraryStore.numbers, {11});
       await tester.tap(confirm);
       await tester.pumpAndSettle();
-      expect(libraryStore.numbers, {1, 2, 11});
+      expect(libraryStore.numbers, {1, 2});
       await libraryStore.load();
-      expect(libraryStore.numbers, {1, 2, 11});
+      expect(libraryStore.numbers, {1, 2});
       expect(tester.takeException(), isNull);
     },
   );
@@ -288,24 +292,20 @@ void main() {
   );
 
   testWidgets(
-    'selection preview keeps the first slot stable when numbers change',
+    'selection preview is compact and centered without number-area margins',
     (tester) async {
       viewport(tester, const Size(700, 1000));
-      Future<void> show(List<int> numbers) async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: SelectedNumberPreview(numbers: numbers)),
-          ),
-        );
-        await tester.pumpAndSettle();
-      }
-
-      await show([3]);
-      final x = tester.getCenter(find.byType(NumberTile).first).dx;
-      await show([3, 11, 24]);
-      expect(tester.getCenter(find.byType(NumberTile).first).dx, x);
-      final left = tester.getRect(find.byType(NumberTile).first).left;
-      expect(left, closeTo(700 * .075, .01));
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: SelectedNumberPreview(numbers: [3, 11, 24])),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final first = tester.getRect(find.byType(NumberTile).first),
+          last = tester.getRect(find.byType(NumberTile).last);
+      expect((first.left + last.right) / 2, 350);
+      expect(last.right - first.left, closeTo(3 * first.width + 16, .01));
+      expect(find.byType(NumberArea), findsNothing);
     },
   );
 

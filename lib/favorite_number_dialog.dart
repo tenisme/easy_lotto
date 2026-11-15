@@ -1,3 +1,4 @@
+import 'word_wrap_text.dart';
 import 'package:flutter/material.dart';
 import 'number_display.dart';
 
@@ -15,7 +16,7 @@ class FavoriteNumberDialog extends StatefulWidget {
 }
 
 class _FavoriteNumberDialogState extends State<FavoriteNumberDialog> {
-  final chosen = <int>{};
+  late final chosen = {...widget.saved};
   @override
   Widget build(BuildContext context) => Dialog(
     insetPadding: const EdgeInsets.all(16),
@@ -31,8 +32,8 @@ class _FavoriteNumberDialogState extends State<FavoriteNumberDialog> {
           children: [
             const Padding(
               padding: EdgeInsets.all(16),
-              child: Text(
-                '번호 추가',
+              child: WordWrapText(
+                '내 번호 추가·삭제',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
@@ -42,16 +43,15 @@ class _FavoriteNumberDialogState extends State<FavoriteNumberDialog> {
                   children: [
                     const Padding(
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: Text(
-                        '하트가 있는 번호는 이미 저장되어 있습니다.',
+                      child: WordWrapText(
+                        "터치로 '내 번호'를 추가 및 삭제할 수 있습니다.",
                         textAlign: TextAlign.center,
                       ),
                     ),
                     NumberPickerGrid(
                       numbers: List.generate(45, (i) => i + 1),
                       selected: chosen,
-                      favorites: widget.saved,
-                      disabled: widget.saved,
+                      favorites: chosen,
                       maxColumns:
                           MediaQuery.orientationOf(context) ==
                               Orientation.landscape
@@ -72,16 +72,20 @@ class _FavoriteNumberDialogState extends State<FavoriteNumberDialog> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('취소', textAlign: TextAlign.center),
+                      child: const WordWrapText(
+                        '취소',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: FilledButton(
-                      onPressed: chosen.isEmpty
-                          ? null
-                          : () => Navigator.pop(context, {...chosen}),
-                      child: const Text('확인', textAlign: TextAlign.center),
+                      onPressed: () => Navigator.pop(context, {...chosen}),
+                      child: const WordWrapText(
+                        '확인',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                 ],

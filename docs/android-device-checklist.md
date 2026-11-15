@@ -2,6 +2,8 @@
 
 대상: ARM64 Android 7.0(API 24) 이상 기기. 테스트 APK는 디버그 서명이며 정식 스토어 배포용이 아니다.
 
+후속 [번호 관리·설정 이름·디자인 정책 수정](settings-design-policy-review.md)은 현재 코드에만 반영되어 있다. 아래 `0.1.6-preview` 다운로드에는 포함되지 않으며 다음 APK 요청 시 새 빌드로 제공한다.
+
 사용자 확인 정책: APK 요청에는 기존 `codex/recommendation-foundation` 브랜치로 필요한 수정 업로드와 GitHub Actions 빌드를 함께 포함한다. 별도 업로드 요청은 필요하지 않으며 권한 차단 시에만 확인한다. main 병합·정식 릴리스·스토어 게시는 포함하지 않는다.
 
 ## 최신 업데이트 APK (0.1.6-preview)

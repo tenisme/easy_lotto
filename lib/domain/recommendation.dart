@@ -1,8 +1,29 @@
 import 'dart:math';
 
+/// A creation-time label, independent of later preset edits/deletion.
+class GameOrigin {
+  const GameOrigin(this.method, {this.name});
+  final String method;
+  final String? name;
+  String get label => switch (method) {
+    'random' => '완전 랜덤',
+    'manual' => '직접 입력',
+    'temporary' => '임시 상세 규칙',
+    'configured' => name?.trim().isNotEmpty == true ? name! : '상세 규칙',
+    _ => '기록 없음',
+  };
+  Map<String, dynamic> toJson() => {'method': method, 'name': name};
+  static GameOrigin? fromJson(dynamic value) => value == null
+      ? null
+      : GameOrigin(value['method'] as String, name: value['name'] as String?);
+  static GameOrigin configured(String? name) => name == null
+      ? const GameOrigin('temporary')
+      : GameOrigin('configured', name: name);
+}
+
 /// Immutable, normalized six-number game.
 class LottoGame {
-  LottoGame(Iterable<int> values)
+  LottoGame(Iterable<int> values, {this.origin})
     : numbers = List.unmodifiable(values.toList()..sort()) {
     if (numbers.length != 6 ||
         numbers.toSet().length != 6 ||
@@ -11,6 +32,7 @@ class LottoGame {
     }
   }
   final List<int> numbers;
+  final GameOrigin? origin;
   @override
   bool operator ==(Object other) =>
       other is LottoGame && numbers.join(',') == other.numbers.join(',');

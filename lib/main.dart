@@ -1,3 +1,4 @@
+import 'word_wrap_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'domain/recommendation.dart';
@@ -145,7 +146,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
               ),
             TextButton(
               onPressed: () => Navigator.pop(context, 'new'),
-              child: const Text('새 설정', textAlign: TextAlign.center),
+              child: const WordWrapText('새 설정', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -195,7 +196,8 @@ class _RecommendationHomeState extends State<RecommendationHome> {
       final preset = presetStore.find(presetStore.selectedId);
       final options = detailed ? (selected ? preset?.options : draft) : null;
       if (selected) activeId = preset?.id;
-      final games = options == null
+      final generatedOrigin = captureOrigin(options, activeId);
+      final rawGames = options == null
           ? await compute(generateRandomGames, count)
           : await compute(generateConfiguredGames, (
               options,
@@ -206,7 +208,10 @@ class _RecommendationHomeState extends State<RecommendationHome> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => RecommendationResults(
-            initialGames: games,
+            initialGames: [
+              for (final g in rawGames)
+                LottoGame(g.numbers, origin: generatedOrigin),
+            ],
             options: options,
             presetId: detailed ? activeId : null,
           ),
@@ -293,7 +298,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                       }
                     }
                   },
-                  child: const Text(
+                  child: const WordWrapText(
                     '결과 이탈 안내 다시 켜기',
                     textAlign: TextAlign.left,
                   ),
@@ -328,7 +333,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                   Row(
                     children: [
                       const Expanded(
-                        child: Text(
+                        child: WordWrapText(
                           '몇 게임을 만들까요?',
                           style: TextStyle(fontSize: 22),
                         ),
@@ -414,7 +419,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                                       null
                               ? null
                               : edit,
-                          child: const Text(
+                          child: const WordWrapText(
                             '설정 수정',
                             textAlign: TextAlign.center,
                           ),
@@ -429,7 +434,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                                       null
                               ? null
                               : () => generate(selected: true),
-                          child: const Text(
+                          child: const WordWrapText(
                             '번호 생성',
                             textAlign: TextAlign.center,
                           ),
@@ -444,7 +449,7 @@ class _RecommendationHomeState extends State<RecommendationHome> {
                         : detailed
                         ? edit
                         : generate,
-                    child: Text(
+                    child: WordWrapText(
                       busy
                           ? '생성 중입니다'
                           : detailed
@@ -522,7 +527,13 @@ class _RecommendationResultsState extends State<RecommendationResults> {
     }
   }
 
-  late List<LottoGame> games = widget.initialGames;
+  late List<LottoGame> games = [
+    for (final g in widget.initialGames)
+      LottoGame(
+        g.numbers,
+        origin: g.origin ?? captureOrigin(widget.options, widget.presetId),
+      ),
+  ];
   bool busy = false;
   late RecommendationOptions? options = widget.options;
   late String? presetId = widget.presetId;
@@ -560,6 +571,10 @@ class _RecommendationResultsState extends State<RecommendationResults> {
     setState(() => busy = true);
     try {
       final configuration = edited ?? options;
+      final generatedOrigin = captureOrigin(
+        configuration,
+        replacementId ?? presetId,
+      );
       final next = configuration == null
           ? await compute(generateRandomGames, games.length)
           : await compute(generateConfiguredGames, (
@@ -569,7 +584,9 @@ class _RecommendationResultsState extends State<RecommendationResults> {
             ));
       if (mounted) {
         setState(() {
-          games = next;
+          games = [
+            for (final g in next) LottoGame(g.numbers, origin: generatedOrigin),
+          ];
           savedFromResults.clear();
           selectedGames
             ..clear()
@@ -612,13 +629,50 @@ class _RecommendationResultsState extends State<RecommendationResults> {
             padding: const EdgeInsets.all(20),
             children: [
               Text(
-                '${options == null ? '완전 랜덤' : presetStore.find(presetId)?.name ?? '임시 설정'} · ${games.length}게임',
+                '${games.first.origin?.label ?? '기록 없음'} · ${games.length}게임',
               ),
-              TextButton(
-                onPressed: busy || presetStore.items.length < 2
-                    ? null
-                    : otherSettings,
-                child: const Text('다른 설정 선택', textAlign: TextAlign.center),
+              LayoutBuilder(
+                builder: (context, c) {
+                  final buttons = <Widget>[
+                    OutlinedButton(
+                      onPressed: busy || presetStore.items.length < 2
+                          ? null
+                          : otherSettings,
+                      child: const WordWrapText(
+                        '다른 설정 선택',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    if (options != null)
+                      OutlinedButton(
+                        onPressed: busy ? null : edit,
+                        child: const WordWrapText(
+                          '설정 수정',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                  ];
+                  if (c.maxWidth < 300 ||
+                      MediaQuery.textScalerOf(context).scale(14) > 28) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (var i = 0; i < buttons.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 8),
+                          buttons[i],
+                        ],
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      for (var i = 0; i < buttons.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 8),
+                        Expanded(child: buttons[i]),
+                      ],
+                    ],
+                  );
+                },
               ),
               if (options != null) ...[
                 if (presetStore.find(presetId) == null)
@@ -626,10 +680,6 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                 if (presetStore.find(presetId) != null &&
                     !sameOptions(options!, presetStore.find(presetId)!.options))
                   const Text('생성 후 설정이 변경되었습니다.'),
-                TextButton(
-                  onPressed: busy ? null : edit,
-                  child: const Text('설정 수정', textAlign: TextAlign.center),
-                ),
               ],
               for (var i = 0; i < games.length; i++)
                 Card(
@@ -686,7 +736,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                                   () =>
                                       libraryStore.saveGame(games[i], options),
                                 ),
-                          child: Text(
+                          child: WordWrapText(
                             libraryStore.contains(games[i])
                                 ? '저장된 조합'
                                 : '조합 저장',
@@ -699,7 +749,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                 ),
               FilledButton(
                 onPressed: busy ? null : regenerate,
-                child: Text(
+                child: WordWrapText(
                   busy ? '생성 중입니다' : '다시 생성',
                   textAlign: TextAlign.center,
                 ),
@@ -728,7 +778,7 @@ class _RecommendationResultsState extends State<RecommendationResults> {
                           if (mounted) setState(() => busy = false);
                         }
                       },
-                child: const Text(
+                child: const WordWrapText(
                   '선택한 게임 복권 용지에 저장',
                   textAlign: TextAlign.center,
                 ),

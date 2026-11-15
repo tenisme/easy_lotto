@@ -1,3 +1,4 @@
+import 'word_wrap_text.dart';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -10,6 +11,8 @@ import 'paper_store.dart';
 import 'paper_flow.dart';
 import 'exit_guard.dart';
 import 'number_display.dart';
+import 'selection_tiles.dart';
+import 'style_reset_dialog.dart';
 
 class PaperView extends StatefulWidget {
   const PaperView({
@@ -27,7 +30,7 @@ class PaperView extends StatefulWidget {
 
 class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
   final random = Random();
-  PaperDesign design = PaperDesign.basic;
+  PaperDesign design = PaperDesign.colorBasic;
   bool ready = false, keepOn = false;
   bool covered = false;
   double textZoom = 1, widthZoom = 1;
@@ -73,7 +76,7 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
           actions: [
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('확인', textAlign: TextAlign.center),
+              child: const WordWrapText('확인', textAlign: TextAlign.center),
             ),
           ],
         ),
@@ -139,11 +142,33 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
               title: const Text('번호 칸 디자인 변경'),
               onTap: () => Navigator.pop(context, 'numbers'),
             ),
+            ListTile(
+              leading: const Icon(Icons.restart_alt),
+              title: const Text('스타일 초기화'),
+              onTap: () => Navigator.pop(context, 'reset'),
+            ),
           ],
         ),
       ),
     );
     if (!mounted) return;
+    if (choice == 'reset') {
+      var resetNumbers = false;
+      final preferences = await showDialog<DisplayPreferences>(
+        context: context,
+        builder: (_) => StyleResetDialog(
+          paperId: paper.id,
+          onResetNumbers: (value) => resetNumbers = value,
+        ),
+      );
+      if (!mounted) return;
+      covered = false;
+      if (preferences != null && resetNumbers) {
+        setState(() => design = preferences.resolve(paper.id, random));
+      }
+      await wake(keepOn);
+      return;
+    }
     if (choice != 'numbers') {
       covered = false;
       await wake(keepOn);
@@ -216,7 +241,10 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
                     });
                     update(() {});
                   },
-                  child: const Text('확대 초기화', textAlign: TextAlign.center),
+                  child: const WordWrapText(
+                    '확대 초기화',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ],
             ),
@@ -262,14 +290,20 @@ class _PaperViewState extends State<PaperView> with WidgetsBindingObserver {
             Expanded(
               child: OutlinedButton(
                 onPressed: ready ? style : null,
-                child: const Text('스타일 변경', textAlign: TextAlign.center),
+                child: const WordWrapText(
+                  '스타일 변경',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: FilledButton(
                 onPressed: ready ? edit : null,
-                child: const Text('용지 내용 편집', textAlign: TextAlign.center),
+                child: const WordWrapText(
+                  '용지 내용 편집',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ],
@@ -384,12 +418,13 @@ class DesignSettings extends StatefulWidget {
 class _DesignSettingsState extends State<DesignSettings> {
   DisplayPreferences? original;
   DesignMode mode = DesignMode.basic;
-  DesignMode normalMode = DesignMode.basic;
-  bool randomAll = true;
   PaperDesign base = PaperDesign.colorBasic;
-  PaperDesign? paperDesign;
-  bool saving = false;
-  bool loadFailed = false;
+  bool baseRandom = false,
+      overwrite = false,
+      localTouched = false,
+      saving = false,
+      loadFailed = false;
+  int? localChoice;
   @override
   void initState() {
     super.initState();
@@ -402,50 +437,48 @@ class _DesignSettingsState extends State<DesignSettings> {
       if (mounted) {
         setState(() {
           original = p;
-          mode = p.mode;
-          normalMode = p.mode == DesignMode.random
-              ? p.beforeRandomMode
-              : p.mode;
-          randomAll =
-              p.mode == DesignMode.random ||
-              !p.randomPapers.contains(widget.paperId);
-          if (p.randomPapers.contains(widget.paperId) &&
-              p.mode != DesignMode.random) {
-            mode = DesignMode.random;
-          }
+          mode = p.mode == DesignMode.random ? DesignMode.basic : p.mode;
           base = p.defaultDesign;
-          paperDesign = p.overrides[widget.paperId];
+          baseRandom = p.isDefaultRandom;
+          overwrite = p.overwriteOverrides || p.mode == DesignMode.random;
+          localChoice = p.randomPapers.contains(widget.paperId)
+              ? -1
+              : p.overrides[widget.paperId]?.index;
+          localTouched = false;
+          loadFailed = false;
         });
       }
     } catch (_) {
       if (mounted) {
+        setState(() => loadFailed = true);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('디자인 설정을 불러오지 못했습니다.')));
       }
-      if (mounted) setState(() => loadFailed = true);
     }
   }
 
   DisplayPreferences current() {
-    final overrides = {...original!.overrides};
-    if (paperDesign == null) {
-      overrides.remove(widget.paperId);
-    } else {
-      overrides[widget.paperId] = paperDesign!;
-    }
-    final randomPapers = {...original!.randomPapers};
-    if (mode == DesignMode.random && !randomAll) {
-      randomPapers.add(widget.paperId);
-    } else if (mode != DesignMode.random) {
-      randomPapers.remove(widget.paperId);
+    final local = {...original!.overrides},
+        random = {...original!.randomPapers};
+    if (localTouched) {
+      if (localChoice == -1) {
+        random.add(widget.paperId);
+      } else {
+        random.remove(widget.paperId);
+        local[widget.paperId] = PaperDesign.values[localChoice!];
+      }
     }
     return DisplayPreferences(
-      mode: mode == DesignMode.random && !randomAll ? normalMode : mode,
+      mode: mode,
       defaultDesign: base,
-      overrides: overrides,
-      randomPapers: randomPapers,
-      beforeRandomMode: normalMode,
+      defaultRandom: baseRandom,
+      overwriteOverrides: overwrite,
+      overrides: local,
+      randomPapers: random,
+      beforeRandomMode: original!.beforeRandomMode,
+      backgrounds: original!.backgrounds,
+      defaultBackground: original!.defaultBackground,
     );
   }
 
@@ -466,6 +499,44 @@ class _DesignSettingsState extends State<DesignSettings> {
     }
   }
 
+  Widget heading(String text) => Text(
+    text,
+    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+  );
+  Widget choices({required bool global}) => RadioGroup<int>(
+    groupValue: global
+        ? (baseRandom ? -1 : base.index)
+        : (localChoice ?? (baseRandom ? -1 : base.index)),
+    onChanged: (v) {
+      if (!saving) {
+        setState(() {
+          if (global) {
+            baseRandom = v == -1;
+            if (v != -1) base = PaperDesign.values[v!];
+          } else {
+            localChoice = v;
+            localTouched = true;
+          }
+        });
+      }
+    },
+    child: Column(
+      children: [
+        for (final value in [
+          ...List.generate(PaperDesign.values.length, (i) => i),
+          -1,
+        ])
+          RadioListTile<int>(
+            enabled: !saving,
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            visualDensity: const VisualDensity(vertical: -4),
+            value: value,
+            title: Text(value == -1 ? '열 때마다 랜덤' : designNames[value]),
+          ),
+      ],
+    ),
+  );
   @override
   Widget build(BuildContext context) => ExitGuard(
     needsConfirmation: original != null && !_sameDisplay(current(), original!),
@@ -482,26 +553,17 @@ class _DesignSettingsState extends State<DesignSettings> {
           : SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: saving ? null : save,
-                        child: const Text('변경 완료', textAlign: TextAlign.center),
-                      ),
-                    ),
-                  ],
+                child: FilledButton(
+                  onPressed: saving ? null : save,
+                  child: const WordWrapText('변경 완료'),
                 ),
               ),
             ),
       body: loadFailed
           ? Center(
               child: TextButton(
-                onPressed: () {
-                  setState(() => loadFailed = false);
-                  load();
-                },
-                child: const Text('다시 불러오기', textAlign: TextAlign.center),
+                onPressed: load,
+                child: const WordWrapText('다시 불러오기'),
               ),
             )
           : original == null
@@ -509,157 +571,90 @@ class _DesignSettingsState extends State<DesignSettings> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                const Text(
-                  '디자인 적용 방식',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
+                heading('디자인 적용 방식'),
                 const SizedBox(height: 12),
                 RadioGroup<DesignMode>(
                   groupValue: mode,
-                  onChanged: (m) {
-                    if (!saving) {
-                      setState(() {
-                        mode = m!;
-                        if (m != DesignMode.random) normalMode = m;
-                      });
-                    }
+                  onChanged: (v) {
+                    if (!saving) setState(() => mode = v!);
                   },
                   child: Column(
                     children: [
-                      for (final m in DesignMode.values)
+                      for (final scope in [
+                        DesignMode.basic,
+                        DesignMode.perPaper,
+                      ])
                         RadioListTile<DesignMode>(
+                          enabled: !saving,
                           dense: true,
                           contentPadding: EdgeInsets.zero,
                           visualDensity: const VisualDensity(vertical: -4),
-                          enabled: !saving,
-                          value: m,
+                          value: scope,
                           title: Text(
-                            ['기본 디자인', '용지별 디자인', '열 때마다 랜덤'][m.index],
-                            softWrap: true,
+                            scope == DesignMode.basic ? '기본 디자인' : '용지별 디자인',
                           ),
                         ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 24),
-                if (mode == DesignMode.random) ...[
-                  const Text(
-                    '랜덤 디자인 적용 영역',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  RadioGroup<bool>(
-                    groupValue: randomAll,
-                    onChanged: saving
-                        ? (_) {}
-                        : (value) => setState(() => randomAll = value!),
-                    child: const Column(
-                      children: [
-                        RadioListTile<bool>(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          visualDensity: VisualDensity(vertical: -4),
-                          value: true,
-                          title: Text('전체 용지에 적용'),
-                        ),
-                        RadioListTile<bool>(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          visualDensity: VisualDensity(vertical: -4),
-                          value: false,
-                          title: Text('현재 용지에만 적용'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
                 if (mode == DesignMode.basic) ...[
-                  const Text(
-                    '기본 디자인 선택',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
+                  heading('기본 디자인 선택'),
                   const Text('기본 디자인은 모든 용지에 기본적으로 적용됩니다'),
-                  const SizedBox(height: 12),
-                  RadioGroup<PaperDesign>(
-                    groupValue: base,
-                    onChanged: (v) {
-                      if (!saving && mode == DesignMode.basic) {
-                        setState(() => base = v!);
-                      }
-                    },
-                    child: Column(
-                      children: [
-                        for (final s in PaperDesign.values)
-                          RadioListTile<PaperDesign>(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            visualDensity: const VisualDensity(vertical: -4),
-                            enabled: !saving && mode == DesignMode.basic,
-                            value: s,
-                            title: Text(designNames[s.index], softWrap: true),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-                if (mode == DesignMode.perPaper) ...[
+                  const SizedBox(height: 16),
                   const Text(
-                    '용지별 디자인 선택',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    '용지별 디자인 덮어쓰기 여부',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 12),
+                  SelectionTiles(
+                    labels: const ['유지하기', '덮어쓰기'],
+                    columns: 2,
+                    selected: overwrite ? 1 : 0,
+                    onChanged: saving
+                        ? null
+                        : (i) => setState(() => overwrite = i == 1),
+                  ),
+                  const SizedBox(height: 8),
+                  const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '용지별 디자인 설정을 유지한 채로 나머지 용지의 기본 디자인을 변경합니다.',
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "용지별 디자인 설정과 상관 없이 선택한 디자인으로 전부 덮어씁니다. 단, 이전 디자인 정보는 저장되어 있으므로 '유지하기'를 선택하면 다시 이전에 저장했던 용지별 디자인으로 돌아갑니다.",
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  choices(global: true),
+                ] else ...[
+                  heading('용지별 디자인 선택'),
                   const Text(
                     '이 용지에만 적용되는 디자인을 선택합니다. 개별 지정이 없는 용지는 기본 디자인을 사용합니다.',
                   ),
-                  const SizedBox(height: 12),
-                  RadioGroup<int>(
-                    groupValue: paperDesign?.index ?? -1,
-                    onChanged: (v) {
-                      if (!saving && mode == DesignMode.perPaper) {
-                        setState(
-                          () => paperDesign = v == -1
-                              ? null
-                              : PaperDesign.values[v!],
-                        );
-                      }
-                    },
-                    child: Column(
-                      children: [
-                        RadioListTile<int>(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          visualDensity: const VisualDensity(vertical: -4),
-                          enabled: !saving && mode == DesignMode.perPaper,
-                          value: -1,
-                          title: const Text('기본 디자인 사용'),
-                        ),
-                        for (final s in PaperDesign.values)
-                          RadioListTile<int>(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            visualDensity: const VisualDensity(vertical: -4),
-                            enabled: !saving && mode == DesignMode.perPaper,
-                            value: s.index,
-                            title: Text(designNames[s.index], softWrap: true),
-                          ),
-                      ],
+                  if (overwrite)
+                    const Text(
+                      "현재 전체 덮어쓰기가 적용 중입니다. 개별 설정은 기본 디자인의 '유지하기'를 선택하면 표시됩니다.",
                     ),
-                  ),
+                  const SizedBox(height: 12),
+                  choices(global: false),
                 ],
-                if (mode == DesignMode.random && !randomAll)
-                  const Text('전체 랜덤이 해제됩니다. 다른 용지는 기존 설정으로 돌아갑니다.'),
                 const SizedBox(height: 24),
-                const Text(
-                  '번호 칸 디자인 예시',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
+                heading('번호 칸 디자인 예시'),
                 const SizedBox(height: 12),
-                for (final s in PaperDesign.values) ...[
-                  Text(designNames[s.index]),
+                for (final design in PaperDesign.values) ...[
+                  Text(designNames[design.index]),
                   GameDisplay(
                     label: 'A',
                     numbers: const [3, 11, 17, 24, 32, 42],
-                    design: s,
+                    design: design,
                   ),
                 ],
               ],
@@ -669,8 +664,13 @@ class _DesignSettingsState extends State<DesignSettings> {
 }
 
 bool _sameDisplay(DisplayPreferences a, DisplayPreferences b) =>
-    a.mode == b.mode &&
+    (a.mode == DesignMode.random ? DesignMode.basic : a.mode) ==
+        (b.mode == DesignMode.random ? DesignMode.basic : b.mode) &&
     a.defaultDesign == b.defaultDesign &&
+    a.isDefaultRandom == b.isDefaultRandom &&
+    (a.overwriteOverrides || a.mode == DesignMode.random) ==
+        (b.overwriteOverrides || b.mode == DesignMode.random) &&
     mapEquals(a.overrides, b.overrides) &&
     setEquals(a.randomPapers, b.randomPapers) &&
-    (a.mode != DesignMode.random || a.beforeRandomMode == b.beforeRandomMode);
+    a.defaultBackground == b.defaultBackground &&
+    mapEquals(a.backgrounds, b.backgrounds);
