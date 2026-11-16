@@ -1,0 +1,74 @@
+name: Android preview APK
+on:
+  push:
+    branches: [codex/recommendation-foundation]
+    paths: ['lib/**', 'assets/**', 'android/**', 'pubspec.*', 'test/**', '.github/workflows/android-preview.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: android-preview-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.4'
+          cache: true
+      - uses: actions/cache/restore@v4
+        id: preview-signing
+        with:
+          path: ${{ runner.temp }}/easy-lotto-preview2/debug.keystore
+          key: easy-lotto-preview2-signing-v2
+      - name: Prepare and verify preview signing key
+        shell: bash
+        env:
+          EASY_LOTTO_PREVIEW_KEYSTORE: ${{ runner.temp }}/easy-lotto-preview2/debug.keystore
+        run: |
+          set -euo pipefail
+          expected=$(tr -d '[:space:]' < .github/preview2-signing.sha256)
+          if [ ! -f "$EASY_LOTTO_PREVIEW_KEYSTORE" ]; then
+            if [ "$expected" != "INITIALIZE" ]; then
+              echo '::error::Preview signing key is missing. Restore the original key; do not rotate it.'
+              exit 1
+            fi
+            mkdir -p "$(dirname "$EASY_LOTTO_PREVIEW_KEYSTORE")"
+            keytool -genkeypair -keystore "$EASY_LOTTO_PREVIEW_KEYSTORE" \
+              -storetype JKS -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname 'CN=Easy Lotto Preview 2,O=Easy Lotto,C=KR'
+            chmod 600 "$EASY_LOTTO_PREVIEW_KEYSTORE"
+          fi
+          actual=$(keytool -exportcert -keystore "$EASY_LOTTO_PREVIEW_KEYSTORE" \
+            -storepass android -alias androiddebugkey | sha256sum | cut -d' ' -f1)
+          echo "Preview certificate SHA-256: $actual"
+          if [ "$expected" != "INITIALIZE" ] && [ "$actual" != "$expected" ]; then
+            echo '::error::Preview signing certificate mismatch. Refusing to build.'
+            exit 1
+          fi
+      - uses: actions/cache/save@v4
+        if: steps.preview-signing.outputs.cache-hit != 'true'
+        with:
+          path: ${{ runner.temp }}/easy-lotto-preview2/debug.keystore
+          key: easy-lotto-preview2-signing-v2
+      - run: sudo apt-get update && sudo apt-get install -y libsqlite3-dev
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build apk --debug --target-platform android-arm64
+        env:
+          EASY_LOTTO_PREVIEW_KEYSTORE: ${{ runner.temp }}/easy-lotto-preview2/debug.keystore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: easy-lotto-preview2-arm64
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
